@@ -12,6 +12,8 @@ namespace AshenPaw
         [SerializeField] private bool feetPivot;
         private PlayerMovement movement;
         private Rigidbody2D body;
+        private PlayerCombat combat;
+        private PlayerHealth health;
         private Vector3 originalScale;
         private float landingSquash;
         private bool wasGrounded;
@@ -28,6 +30,8 @@ namespace AshenPaw
         {
             movement = GetComponent<PlayerMovement>();
             body = GetComponent<Rigidbody2D>();
+            combat = GetComponent<PlayerCombat>();
+            health = GetComponent<PlayerHealth>();
             if (visuals == null) visuals = transform.Find("Visuals");
             if (animator == null) animator = GetComponentInChildren<Animator>();
             if (animator == null || animator.runtimeAnimatorController == null)
@@ -50,6 +54,32 @@ namespace AshenPaw
                     trailAge[i] = 1f;
                 }
             }
+        }
+
+        private void OnEnable()
+        {
+            movement = GetComponent<PlayerMovement>();
+            body = GetComponent<Rigidbody2D>();
+            combat = GetComponent<PlayerCombat>();
+            health = GetComponent<PlayerHealth>();
+            cachedController = null;
+            parameters.Clear();
+            if (animator != null) animator.speed = 1f;
+            if (originalScale == Vector3.zero) originalScale = Vector3.one;
+        }
+
+        private void EnsureTrail(int index)
+        {
+            if (trail[index] != null || bodySprite == null) return;
+            var obj = new GameObject("Dodge trail", typeof(SpriteRenderer));
+            obj.hideFlags = HideFlags.DontSave;
+            var renderer = obj.GetComponent<SpriteRenderer>();
+            renderer.sharedMaterial = bodySprite.sharedMaterial;
+            renderer.sortingLayerID = bodySprite.sortingLayerID;
+            renderer.sortingOrder = bodySprite.sortingOrder - 1;
+            renderer.enabled = false;
+            trail[index] = renderer;
+            trailAge[index] = 1f;
         }
 
         private void LateUpdate()
@@ -77,21 +107,59 @@ namespace AshenPaw
                 }
             }
             visuals.localScale = new Vector3(originalScale.x * stretch.x * movement.Facing, originalScale.y * stretch.y, originalScale.z);
+            bool dashVisual = movement.IsDodging || combat != null && (combat.IsCrossDashing || combat.IsLunging);
             if (animated && feetPivot)
             {
                 if (movement.IsCrouching && !movement.IsDodging) stretch.y = movement.CrouchScale;
                 if (movement.IsWallSliding) rotation = movement.Facing * 25f;
-                if (movement.IsDodging)
+                if (dashVisual)
                 {
                     stretch.x = 1.3f;
                     stretch.y = 0.85f;
                     rotation = movement.IsGrounded ? 0f : movement.Facing * -8f;
                 }
+                else if (combat != null && combat.IsCharging)
+                {
+                    stretch.x = 1.05f + combat.ChargeAmount * 0.15f;
+                    stretch.y = 0.85f - combat.ChargeAmount * 0.2f;
+                }
+                else if (combat != null && combat.IsSnapBite)
+                {
+                    stretch.x = 1.5f;
+                    stretch.y = 0.72f;
+                    rotation = -movement.Facing * 8f;
+                }
+                else if (combat != null && combat.IsAttacking)
+                {
+                    stretch.x = combat.IsHeavyAttack ? 1.4f : combat.ComboStep == 0 ? 1.2f : combat.ComboStep == 1 ? 0.95f : 1.35f;
+                    stretch.y = combat.IsHeavyAttack ? 0.8f : combat.ComboStep == 0 ? 0.9f : combat.ComboStep == 1 ? 1.12f : 0.78f;
+                }
+                if (movement.IsGrounded && landingSquash > 0f)
+                {
+                    stretch.x *= 1f + landingSquash;
+                    stretch.y *= 1f - landingSquash;
+                }
+                if (combat != null && combat.IsAirDive && movement.IsGrounded)
+                {
+                    stretch.x = 1f + landingSquash;
+                    stretch.y = 1f - landingSquash;
+                }
                 visuals.localScale = new Vector3(originalScale.x * stretch.x * movement.Facing, originalScale.y * stretch.y, originalScale.z);
             }
-            float hop = animated && feetPivot && movement.IsDodging ? Mathf.Sin(movement.DodgeProgress * Mathf.PI) * 0.3f : 0f;
-            visuals.localPosition = new Vector3(0f, (feetPivot ? 0f : movement.CurrentHeight * 0.5f) + hop, 0f);
-            visuals.localRotation = Quaternion.Euler(0f, 0f, rotation);
+            float dashProgress = movement.IsDodging ? movement.DodgeProgress : combat != null ? combat.CrossVisualProgress : 0f;
+            float hop = animated && feetPivot && dashVisual ? Mathf.Sin(dashProgress * Mathf.PI) * 0.3f : 0f;
+            float attackHop = combat != null && combat.IsAttacking && !combat.IsHeavyAttack && combat.ComboStep == 1 ? Mathf.Sin(combat.AttackProgress * Mathf.PI) * 0.28f : 0f;
+            float finisherHop = 0f;
+            if (combat != null && combat.IsAttacking && !combat.IsHeavyAttack && combat.ComboStep == 2)
+            {
+                finisherHop = Mathf.Sin(combat.AttackProgress * Mathf.PI) * 0.55f;
+                rotation += movement.Facing * Mathf.Max(0f, Mathf.Sin(combat.AttackProgress * Mathf.PI * 2f)) * 25f;
+            }
+            if (combat != null && combat.IsAirDive) rotation = -movement.Facing * combat.DiveNoseAngle;
+            if (combat != null && combat.IsAirSpin) rotation = -movement.Facing * 360f * combat.AttackProgress;
+            float nosePivot = 0f;
+            visuals.localPosition = new Vector3(nosePivot, (feetPivot ? 0f : movement.CurrentHeight * 0.5f) + hop + attackHop + finisherHop, 0f);
+            visuals.localRotation = Quaternion.Euler(0f, combat != null ? combat.CrossTurnYaw : 0f, rotation);
             if (animated) UpdateAnimator();
             UpdateDodgeTrail();
         }
@@ -99,14 +167,16 @@ namespace AshenPaw
         private void UpdateDodgeTrail()
         {
             if (bodySprite == null) return;
-            bodySprite.color = movement.IsDodging ? originalColor * new Color(1.15f, 1.25f, 1.4f, 1f) : originalColor;
+            bodySprite.color = (movement.IsDodging || combat != null && combat.IsCrossDashing) ? originalColor * new Color(1.15f, 1.25f, 1.4f, 1f) : originalColor;
+            if (health != null && health.IsHitFlashing) bodySprite.color = new Color(2f, 0.3f, 0.3f, originalColor.a);
             for (int i = 0; i < trail.Length; i++)
             {
+                EnsureTrail(i);
                 trailAge[i] += Time.deltaTime;
                 trail[i].enabled = trailAge[i] < 0.2f;
                 if (trail[i].enabled) trail[i].color = new Color(0.65f, 0.85f, 1f, (1f - trailAge[i] / 0.2f) * 0.6f);
             }
-            if (!movement.IsDodging || Time.time < nextTrail) return;
+            if (!(movement.IsDodging || combat != null && combat.IsCrossDashing) || Time.time < nextTrail) return;
             nextTrail = Time.time + 0.035f;
             var ghost = trail[trailIndex];
             ghost.sprite = bodySprite.sprite;
@@ -145,6 +215,17 @@ namespace AshenPaw
             SetBool("Rolling", movement.IsDodging);
             SetBool("WallSliding", movement.IsWallSliding);
             SetBool("Invulnerable", movement.IsInvulnerable);
+            if (combat != null)
+            {
+                SetBool("Attacking", combat.IsAttacking);
+                SetBool("Charging", combat.IsCharging);
+                SetBool("HeavyAttack", combat.IsHeavyAttack);
+                SetBool("DashAttack", combat.IsDashAttack);
+                SetBool("CrossBite", combat.IsCrossBite);
+                SetInt("AttackStep", combat.ComboStep);
+                SetFloat("ChargeAmount", combat.ChargeAmount);
+                animator.speed = combat.HasHitPause ? 0f : 1f;
+            }
         }
 
         private void SetFloat(string name, float value)
@@ -157,6 +238,12 @@ namespace AshenPaw
         {
             int id = Animator.StringToHash(name);
             if (parameters.TryGetValue(id, out var type) && type == AnimatorControllerParameterType.Bool) animator.SetBool(id, value);
+        }
+
+        private void SetInt(string name, int value)
+        {
+            int id = Animator.StringToHash(name);
+            if (parameters.TryGetValue(id, out var type) && type == AnimatorControllerParameterType.Int) animator.SetInteger(id, value);
         }
     }
 }

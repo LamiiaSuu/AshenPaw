@@ -14,7 +14,8 @@ GameObject:
   - component: {fileID: 5012331561955098676}
   - component: {fileID: 5494331777631242886}
   - component: {fileID: 391775347239595171}
-  m_Layer: 0
+  - component: {fileID: 6085061164134902266}
+  m_Layer: 9
   m_Name: TestPlayer
   m_TagString: Player
   m_Icon: {fileID: 0}
@@ -130,7 +131,7 @@ MonoBehaviour:
   wallJumpLock: 0.14
   dodgeSpeed: 13
   dodgeDuration: 0.3
-  dodgeCooldown: 0.5
+  dodgeCooldown: 0.4
   invulnerabilityStart: 0.03
   invulnerabilityEnd: 0.25
   width: 0.75
@@ -138,7 +139,7 @@ MonoBehaviour:
   crouchingHeight: 0.9
   groundLayers:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 4294966527
 --- !u!114 &5494331777631242886
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -151,7 +152,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c5ebb0ce21156534097d3e9219ecc069, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AshenPaw.PlayerHealth
-  maxHealth: 5
+  maxHealth: 100
 --- !u!114 &391775347239595171
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -168,6 +169,32 @@ MonoBehaviour:
   animator: {fileID: 5284853387427806145}
   placeholderMotion: 1
   feetPivot: 1
+--- !u!114 &6085061164134902266
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 136851256653958870}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c704b7ffc72c2bc4d812e2b2406e426a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AshenPaw.PlayerCombat
+  enemyLayers:
+    serializedVersion: 2
+    m_Bits: 256
+  terrainLayers:
+    serializedVersion: 2
+    m_Bits: 4294966527
+  lightDamage: 6
+  heavyDamage: 12
+  fullyChargedDamage: 28
+  fullChargeTime: 1.1
+  effectSprite: {fileID: 7482667652216324306, guid: a4e1749621430d04ba58964af8e2adcc, type: 3}
+  effectMaterial: {fileID: 2100000, guid: e58fdff675357f44a89c9c56db875c58, type: 2}
+  chargeFill: {fileID: 0}
+  chargeBackground: {fileID: 0}
 --- !u!1 &734759489180029842
 GameObject:
   m_ObjectHideFlags: 0
@@ -178,7 +205,7 @@ GameObject:
   m_Component:
   - component: {fileID: 8136784362067971111}
   - component: {fileID: 5924039015391023887}
-  m_Layer: 0
+  m_Layer: 9
   m_Name: Eyes
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -270,7 +297,7 @@ GameObject:
   m_Component:
   - component: {fileID: 9203344252059516469}
   - component: {fileID: 5284853387427806145}
-  m_Layer: 0
+  m_Layer: 9
   m_Name: Visuals
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -326,7 +353,7 @@ GameObject:
   m_Component:
   - component: {fileID: 7306836030566043318}
   - component: {fileID: 7249639776155702213}
-  m_Layer: 0
+  m_Layer: 9
   m_Name: Body
   m_TagString: Untagged
   m_Icon: {fileID: 0}

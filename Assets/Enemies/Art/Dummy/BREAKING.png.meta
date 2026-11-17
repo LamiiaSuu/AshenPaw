@@ -1,0 +1,445 @@
+fileFormatVersion: 2
+guid: 4eb47cb9d41e8aa41a3697ba634b4b14
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: -859231328361047929
+    second: BREAKING_0
+  - first:
+      213: -7364443257771194583
+    second: BREAKING_1
+  - first:
+      213: -5748745942339872567
+    second: BREAKING_2
+  - first:
+      213: 7121156079471085431
+    second: BREAKING_3
+  - first:
+      213: -7396151879856245925
+    second: BREAKING_4
+  - first:
+      213: -1979353149590391903
+    second: BREAKING_5
+  - first:
+      213: -7535449914086593066
+    second: BREAKING_6
+  - first:
+      213: -5644602957289525062
+    second: BREAKING_7
+  - first:
+      213: 4916713558770928564
+    second: BREAKING_8
+  - first:
+      213: 5636260572899804344
+    second: BREAKING_9
+  - first:
+      213: -1509329564128239772
+    second: BREAKING_10
+  - first:
+      213: 3657614043753938273
+    second: BREAKING_11
+  - first:
+      213: 6899098635379751194
+    second: BREAKING_12
+  - first:
+      213: -2544594728840346402
+    second: BREAKING_13
+  - first:
+      213: 1657163381679073494
+    second: BREAKING_14
+  - first:
+      213: 7767164752214366459
+    second: BREAKING_15
+  - first:
+      213: 6845843717452047311
+    second: BREAKING_16
+  - first:
+      213: 8773617183733341957
+    second: BREAKING_17
+  - first:
+      213: 788295548137264512
+    second: BREAKING_18
+  - first:
+      213: -5937748147831180326
+    second: BREAKING_19
+  - first:
+      213: -5353356298746317632
+    second: BREAKING_20
+  - first:
+      213: -6774229528256200135
+    second: BREAKING_21
+  - first:
+      213: 109266661909236165
+    second: BREAKING_22
+  - first:
+      213: -3494464532747330413
+    second: BREAKING_00
+  - first:
+      213: 7958044880587408151
+    second: BREAKING_01
+  - first:
+      213: 5222064390697920128
+    second: BREAKING_02
+  - first:
+      213: 6362275183599649464
+    second: BREAKING_03
+  - first:
+      213: 5975173745253353452
+    second: BREAKING_04
+  - first:
+      213: -5464373425550625953
+    second: BREAKING_05
+  - first:
+      213: 1269974405101733014
+    second: BREAKING_06
+  - first:
+      213: -8457410410561648955
+    second: BREAKING_07
+  - first:
+      213: -2322304109557695824
+    second: BREAKING_08
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 0
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 24
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationMethod: 0
+  spriteTessellationDetail: -1
+  spriteGeometrySubdivision: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 0
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: BREAKING_00
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 80
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.083333336}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 39cd46d950b218fc0800000000000000
+      internalID: -3494464532747330413
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: BREAKING_01
+      rect:
+        serializedVersion: 2
+        x: 80
+        y: 0
+        width: 80
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.083333336}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7134706c7a7a07e60800000000000000
+      internalID: 7958044880587408151
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: BREAKING_02
+      rect:
+        serializedVersion: 2
+        x: 160
+        y: 0
+        width: 80
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.083333336}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 08624c945ef787840800000000000000
+      internalID: 5222064390697920128
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: BREAKING_03
+      rect:
+        serializedVersion: 2
+        x: 240
+        y: 0
+        width: 80
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.083333336}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8b28db912975b4850800000000000000
+      internalID: 6362275183599649464
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: BREAKING_04
+      rect:
+        serializedVersion: 2
+        x: 320
+        y: 0
+        width: 80
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.083333336}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ce7011d0dd41ce250800000000000000
+      internalID: 5975173745253353452
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: BREAKING_05
+      rect:
+        serializedVersion: 2
+        x: 400
+        y: 0
+        width: 80
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.083333336}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f5378f92255aa24b0800000000000000
+      internalID: -5464373425550625953
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: BREAKING_06
+      rect:
+        serializedVersion: 2
+        x: 480
+        y: 0
+        width: 80
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.083333336}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6944de92efadf9110800000000000000
+      internalID: 1269974405101733014
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: BREAKING_07
+      rect:
+        serializedVersion: 2
+        x: 560
+        y: 0
+        width: 80
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.083333336}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5c648c67a0e31aa80800000000000000
+      internalID: -8457410410561648955
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: BREAKING_08
+      rect:
+        serializedVersion: 2
+        x: 640
+        y: 0
+        width: 80
+        height: 48
+      alignment: 9
+      pivot: {x: 0.5, y: 0.083333336}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0ba326967b485cfd0800000000000000
+      internalID: -2322304109557695824
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      BREAKING_0: -859231328361047929
+      BREAKING_00: -3494464532747330413
+      BREAKING_01: 7958044880587408151
+      BREAKING_02: 5222064390697920128
+      BREAKING_03: 6362275183599649464
+      BREAKING_04: 5975173745253353452
+      BREAKING_05: -5464373425550625953
+      BREAKING_06: 1269974405101733014
+      BREAKING_07: -8457410410561648955
+      BREAKING_08: -2322304109557695824
+      BREAKING_1: -7364443257771194583
+      BREAKING_10: -1509329564128239772
+      BREAKING_11: 3657614043753938273
+      BREAKING_12: 6899098635379751194
+      BREAKING_13: -2544594728840346402
+      BREAKING_14: 1657163381679073494
+      BREAKING_15: 7767164752214366459
+      BREAKING_16: 6845843717452047311
+      BREAKING_17: 8773617183733341957
+      BREAKING_18: 788295548137264512
+      BREAKING_19: -5937748147831180326
+      BREAKING_2: -5748745942339872567
+      BREAKING_20: -5353356298746317632
+      BREAKING_21: -6774229528256200135
+      BREAKING_22: 109266661909236165
+      BREAKING_3: 7121156079471085431
+      BREAKING_4: -7396151879856245925
+      BREAKING_5: -1979353149590391903
+      BREAKING_6: -7535449914086593066
+      BREAKING_7: -5644602957289525062
+      BREAKING_8: 4916713558770928564
+      BREAKING_9: 5636260572899804344
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
