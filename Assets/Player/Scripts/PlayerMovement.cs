@@ -175,6 +175,7 @@ namespace AshenPaw
 
             if (IsDodging)
             {
+                if (!float.IsNegativeInfinity(jumpQueued)) jumpQueued = clock;
                 dodgeElapsed += dt;
                 float speed = dodgeSpeed * Mathf.Lerp(1.25f, 0.8f, DodgeProgress);
                 if (combat != null) speed = combat.LimitDodgeSpeed(speed, dodgeDirection);
@@ -220,7 +221,7 @@ namespace AshenPaw
                 dodgeDirection = InputFacing();
                 facing = dodgeDirection;
                 SetHeight(true);
-                jumpQueued = float.NegativeInfinity;
+                if (!HasJump()) jumpQueued = float.NegativeInfinity;
                 body.linearVelocity = new Vector2(dodgeDirection * dodgeSpeed * 1.25f, 0f);
                 dodgeQueued = false;
                 return;
