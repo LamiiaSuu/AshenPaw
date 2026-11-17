@@ -29,6 +29,7 @@ namespace AshenPaw
 
         public bool TakeDamage(int damage, Vector2 direction)
         {
+            if (GetComponent<PlayerDebug>() is PlayerDebug debug && debug.Invincible) return false;
             if (damage <= 0 || movement.IsInvulnerable || Time.time < protectedUntil) return false;
             Health = Mathf.Max(0, Health - damage);
             protectedUntil = Time.time + 0.45f;

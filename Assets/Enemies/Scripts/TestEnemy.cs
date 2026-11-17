@@ -104,6 +104,10 @@ namespace AshenPaw
 
         private void FixedUpdate() => Tick(Time.fixedDeltaTime);
 
+        public bool DebugIsAttacking => state == State.Windup || state == State.Attack || state == State.SecondWindup || state == State.SecondAttack || state == State.Recover;
+        public bool DebugAttackActive => state == State.Attack || state == State.SecondAttack;
+        public string DebugInfo => (dummyMode ? "Dummy" : "Skeleton") + "  " + Health + "/" + MaxHealth + " HP  |  " + state;
+
         private void Tick(float dt)
         {
             stateTime += dt;
@@ -138,6 +142,7 @@ namespace AshenPaw
             }
             if (body.position.y < -10f) { Die(); return; }
             if (target == null) { FindPlayer(); Stop(); return; }
+            if (target.GetComponent<PlayerDebug>() is PlayerDebug debug && debug.HiddenFromEnemies) { Stop(); ChangeState(State.Idle); return; }
             if (state == State.Hurt)
             {
                 Stop();
@@ -332,6 +337,8 @@ namespace AshenPaw
                 if (spriteRenderer != null) spriteRenderer.flipX = !dummyMode && facing < 0;
                 visuals.localRotation = Quaternion.Euler(0f, 0f, dummyMode && state == State.Idle ? Mathf.Sin(stateTime * 2f) * 1.2f : 0f);
             }
+            if (healthBar != null) healthBar.gameObject.SetActive(PlayerDebug.ShowEnemyHealth);
+            if (status != null) status.gameObject.SetActive(PlayerDebug.ShowEnemyHealth);
             if (healthBar != null) healthBar.position = transform.position + Vector3.up * (1.7f * Size + 0.45f);
             if (healthFill != null)
             {
@@ -340,7 +347,7 @@ namespace AshenPaw
                 healthFill.transform.localPosition = new Vector3(-0.9f + amount * 0.9f, 0f, 0f);
                 healthFill.color = dummyMode ? new Color(0.9f, 0.7f, 0.3f) : new Color(0.9f, 0.3f, 0.3f);
             }
-            if (status != null) status.text = (dummyMode ? "DUMMY " : "SKELETT ") + Health + "/" + MaxHealth;
+            if (status != null) status.text = (dummyMode ? "DUMMY " : "SKELETON ") + Health + "/" + MaxHealth;
         }
     }
 }

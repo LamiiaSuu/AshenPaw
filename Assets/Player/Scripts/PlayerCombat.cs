@@ -21,6 +21,7 @@ namespace AshenPaw
         [SerializeField, Min(0f), InspectorName("Pause nach Combo (Sekunden)")] private float comboCooldown = 0.12f;
         private float attackCooldownRemaining;
 
+        public bool DebugAttackActive => dashStrikeActive || IsLunging && IsAirDive || IsAttacking && elapsed >= windup && elapsed < windup + activeTime;
         public bool IsAttacking { get; private set; }
         public bool IsCharging { get; private set; }
         public bool IsHeavyAttack { get; private set; }
@@ -103,6 +104,7 @@ namespace AshenPaw
 
         private void Update()
         {
+            if (GetComponent<PlayerDebug>() is PlayerDebug debug && debug.PointerOverMenu) { CancelAttack(); heavyHeld = false; Tick(Time.deltaTime); return; }
             var mouse = Mouse.current;
             var pad = Gamepad.current;
             if (mouse != null && mouse.leftButton.wasPressedThisFrame || pad != null && pad.buttonWest.wasPressedThisFrame)

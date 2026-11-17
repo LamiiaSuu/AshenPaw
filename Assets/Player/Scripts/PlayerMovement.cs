@@ -36,6 +36,10 @@ namespace AshenPaw
         [SerializeField] private float crouchingHeight = 0.9f;
         [SerializeField] private LayerMask groundLayers = ~0;
 
+        public float DebugRunSpeed { get => runSpeed; set => runSpeed = Mathf.Clamp(value, 1f, 20f); }
+        public float DebugJumpSpeed { get => jumpSpeed; set => jumpSpeed = Mathf.Clamp(value, 3f, 30f); }
+        public float DebugFallGravity { get => fallingGravity; set => fallingGravity = Mathf.Clamp(value, 10f, 100f); }
+        public float DebugMaxFallSpeed { get => maximumFallSpeed; set => maximumFallSpeed = Mathf.Clamp(value, 5f, 60f); }
         public bool DownHeld => duckHeld;
         public bool IsGrounded { get; private set; }
         public bool IsCrouching { get; private set; }
@@ -69,6 +73,7 @@ namespace AshenPaw
 
         private void Awake()
         {
+            if (GetComponent<PlayerDebug>() == null) gameObject.AddComponent<PlayerDebug>();
             body = GetComponent<Rigidbody2D>();
             combat = GetComponent<PlayerCombat>();
             capsule = GetComponent<CapsuleCollider2D>();
