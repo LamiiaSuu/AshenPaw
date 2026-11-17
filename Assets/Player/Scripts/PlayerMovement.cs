@@ -22,7 +22,7 @@ namespace AshenPaw
         [SerializeField] private float jumpBuffer = 0.12f;
         [Header("Wall")]
         [SerializeField] private float wallSlideSpeed = 3f;
-        [SerializeField] private Vector2 wallJumpSpeed = new Vector2(7.0f, 14.5f);
+        [SerializeField] private Vector2 wallJumpSpeed = new Vector2(9.5f, 14.5f);
         [SerializeField] private float wallJumpLock = 0.14f;
         [Header("Dodge")]
         [SerializeField] private float dodgeSpeed = 13f;
@@ -172,6 +172,7 @@ namespace AshenPaw
             {
                 dodgeElapsed += dt;
                 float speed = dodgeSpeed * Mathf.Lerp(1.25f, 0.8f, DodgeProgress);
+                if (combat != null) speed = combat.LimitDodgeSpeed(speed, dodgeDirection);
                 float vertical = airDodge && !IsGrounded ? 0f : Mathf.Max(body.linearVelocity.y - fallingGravity * dt, -maximumFallSpeed);
                 body.linearVelocity = new Vector2(dodgeDirection * speed, vertical);
                 if (dodgeElapsed >= dodgeDuration)

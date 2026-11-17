@@ -16,6 +16,8 @@ namespace AshenPaw
         private PlayerHealth health;
         private Vector3 originalScale;
         private float landingSquash;
+        private bool spinning;
+        private Vector3 spinPivot;
         private bool wasGrounded;
         private SpriteRenderer bodySprite;
         private Color originalColor;
@@ -156,10 +158,31 @@ namespace AshenPaw
                 rotation += movement.Facing * Mathf.Max(0f, Mathf.Sin(combat.AttackProgress * Mathf.PI * 2f)) * 25f;
             }
             if (combat != null && combat.IsAirDive) rotation = -movement.Facing * combat.DiveNoseAngle;
-            if (combat != null && combat.IsAirSpin) rotation = -movement.Facing * 360f * combat.AttackProgress;
+            bool airSpin = combat != null && combat.IsAirSpin;
+            if (airSpin)
+            {
+                if (!spinning && bodySprite != null && bodySprite.sprite != null)
+                    spinPivot = visuals.InverseTransformPoint(bodySprite.transform.TransformPoint(bodySprite.sprite.bounds.center));
+                float t = combat.AttackProgress;
+                float curlIn = Mathf.SmoothStep(0f, 1f, t / 0.18f);
+                float unfold = Mathf.SmoothStep(0f, 1f, (t - 0.76f) / 0.24f);
+                float curl = curlIn * (1f - unfold);
+                visuals.localScale = new Vector3(
+                    originalScale.x * movement.Facing * Mathf.Lerp(1f, 0.55f, curl),
+                    originalScale.y * Mathf.Lerp(1f, 1.12f, curl), originalScale.z);
+                float turn = Mathf.SmoothStep(0f, 1f, (t - 0.18f) / 0.58f);
+                rotation = -movement.Facing * 360f * turn;
+            }
+            spinning = airSpin;
             float nosePivot = 0f;
             visuals.localPosition = new Vector3(nosePivot, (feetPivot ? 0f : movement.CurrentHeight * 0.5f) + hop + attackHop + finisherHop, 0f);
             visuals.localRotation = Quaternion.Euler(0f, combat != null ? combat.CrossTurnYaw : 0f, rotation);
+            if (airSpin)
+            {
+                Vector3 pivot = Vector3.Scale(spinPivot, visuals.localScale);
+                Vector3 center = Vector3.Scale(spinPivot, new Vector3(originalScale.x * movement.Facing, originalScale.y, originalScale.z));
+                visuals.localPosition += center - visuals.localRotation * pivot;
+            }
             if (animated) UpdateAnimator();
             UpdateDodgeTrail();
         }

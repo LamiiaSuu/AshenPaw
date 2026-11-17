@@ -31,9 +31,9 @@ namespace AshenPaw
         public bool IsAirLunge { get; private set; }
         public bool IsLunging { get; private set; }
         public bool IsAirDive { get; private set; }
-        private bool airActionUsed, airFreeDash;
+        private bool airActionUsed, airFreeDash, airSpinUsed;
         private readonly List<Collider2D> ignoredPlatforms = new List<Collider2D>();
-        public void ResetAirAction() { if (!IsLunging) airActionUsed = false; }
+        public void ResetAirAction() { if (!IsLunging) { airActionUsed = false; airSpinUsed = false; } }
         public Vector2 AirLungeVelocity => IsAirDive ? Vector2.down * 34f : airFreeDash ? Vector2.right * AttackFacing * Mathf.Lerp(21f, 12f, Mathf.Clamp01(lungeTime / 0.16f)) : airTarget == null ? Vector2.zero : ((Vector2)airTarget.bounds.center - (body.position + Vector2.up * 0.75f)).normalized * 24f;
         private Collider2D airTarget;
         private float lungeTime;
@@ -76,6 +76,8 @@ namespace AshenPaw
         private float crossEntryVelocity;
         private int crossDirection;
         private float crossDestinationX;
+        private Collider2D crossTarget;
+        private Vector2 crossApproachStart;
         private float releasedCharge;
         private bool dashStrikeActive;
         private Vector2 lastDashPosition;
@@ -142,6 +144,8 @@ namespace AshenPaw
             }
             if (held && !heavyHeld && (movement.IsDodging || IsAttacking && !IsHeavyAttack))
             {
+                crossApproachStart = body.position;
+                crossTarget = SelectCrossTarget();
                 crossBiteQueued = true;
                 crossFromDodge = movement.IsDodging;
                 if (crossFromDodge) dashHeavyOrigin = body.position;
@@ -299,6 +303,8 @@ namespace AshenPaw
         {
             if (!movement.IsGrounded)
             {
+                if (airSpinUsed) return;
+                airSpinUsed = true;
                 IsCharging = IsDashAttack = IsHeavyAttack = false;
                 ComboStep = 0;
                 damage = 10;
@@ -509,21 +515,48 @@ namespace AshenPaw
             crossEntryVelocity = body.linearVelocity.x;
             crossStartX = body.position.x;
             crossDirection = AttackFacing;
+            if (crossTarget == null || crossTarget.GetComponentInParent<TestEnemy>().IsDead) crossTarget = SelectCrossTarget();
             crossDestinationX = body.position.x + crossDirection * 2.5f;
-            var filter = new ContactFilter2D { useTriggers = false, useLayerMask = true, layerMask = enemyLayers };
-            Vector2 center = body.position + new Vector2(crossDirection * 1.75f, 1f);
-            int count = physics.OverlapBox(center, new Vector2(3.5f, 2f), 0f, filter, targets);
-            float nearest = float.PositiveInfinity;
+            if (crossTarget != null)
+            {
+                float edge = crossDirection > 0 ? crossTarget.bounds.max.x : crossTarget.bounds.min.x;
+                crossDestinationX = crossDirection > 0 ? Mathf.Max(body.position.x, edge + 0.65f) : Mathf.Min(body.position.x, edge - 0.65f);
+            }
+        }
+
+        private Collider2D SelectCrossTarget()
+        {
+            Vector2 origin = body.position + Vector2.up * 0.8f;
+            Vector2 aim = Vector2.right * movement.InputFacing();
+            var pad = Gamepad.current;
+            if (pad != null && pad.leftStick.ReadValue().sqrMagnitude > 0.2f) aim = pad.leftStick.ReadValue().normalized;
+            var keys = Keyboard.current;
+            if (keys != null)
+            {
+                float y = (keys.wKey.isPressed || keys.upArrowKey.isPressed ? 1f : 0f) - (keys.sKey.isPressed || keys.downArrowKey.isPressed ? 1f : 0f);
+                if (y != 0f) aim = new Vector2(aim.x, y).normalized;
+            }
+            int count = physics.OverlapCircle(origin, 5.5f, new ContactFilter2D { useTriggers = false, useLayerMask = true, layerMask = enemyLayers }, targets);
+            Collider2D best = null;
+            float bestScore = float.NegativeInfinity;
             for (int i = 0; i < count; i++)
             {
                 var enemy = targets[i].GetComponentInParent<TestEnemy>();
                 if (enemy == null || enemy.IsDead) continue;
-                float distance = (targets[i].bounds.center.x - body.position.x) * crossDirection;
-                if (distance < 0f || distance >= nearest) continue;
-                nearest = distance;
-                float edge = crossDirection > 0 ? targets[i].bounds.max.x : targets[i].bounds.min.x;
-                crossDestinationX = body.position.x + crossDirection * Mathf.Clamp((edge - body.position.x) * crossDirection + 1.1f, 0.5f, 5.5f);
+                Vector2 delta = (Vector2)targets[i].bounds.center - origin;
+                if (delta.x * movement.InputFacing() < -0.3f || Mathf.Abs(delta.y) > 1.6f || TerrainBlocks(origin, delta)) continue;
+                float score = Vector2.Dot(aim, delta.normalized) * 2f - delta.magnitude;
+                if (score > bestScore) { bestScore = score; best = targets[i]; }
             }
+            return best;
+        }
+
+        public float LimitDodgeSpeed(float speed, int direction)
+        {
+            if (!crossBiteQueued || !crossFromDodge || !heavyHeld || crossTarget == null) return speed;
+            float edge = direction > 0 ? crossTarget.bounds.max.x : crossTarget.bounds.min.x;
+            float remaining = Mathf.Max(0f, (edge + direction * 0.65f - body.position.x) * direction);
+            return Mathf.Min(speed, Mathf.Sqrt(2f * 90f * remaining), remaining / Time.fixedDeltaTime);
         }
 
         private void BeginAttack()
@@ -611,6 +644,7 @@ namespace AshenPaw
                 if (IsDashAttack) return DashHitbox(feet);
                 if (IsAirDive) return new Bounds(feet + Vector2.up * 0.35f, new Vector3(2.4f, 1.6f, 0f));
                 if (IsAirSpin) return new Bounds(feet + Vector2.up * 0.75f, new Vector3(3.2f, 3.2f, 0f));
+                if (IsCrossBite) return new Bounds(feet + new Vector2(direction * 0.95f, 0.75f), new Vector3(1.9f, 1.25f, 0f));
                 if (IsSnapBite) return new Bounds(feet + new Vector2(direction * 1f, 0.75f), new Vector3(1.9f, 1.1f, 0f));
                 return new Bounds(feet + new Vector2(direction * (reach * 0.5f + 0.25f), 0.75f), new Vector3(reach, 1.25f, 0f));
             }
