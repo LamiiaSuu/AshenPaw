@@ -323,7 +323,7 @@ namespace AshenPaw
                     if (state == State.Reviving) index = frames.Length - 1 - index;
                     spriteRenderer.sprite = frames[index];
                 }
-                Color color = Color.white;
+                Color color = Color.Lerp(Color.white, new Color(4f, 3.6f, 3.6f, 1f), Mathf.Clamp01(flashTime / 0.12f));
                 spriteRenderer.color = color;
             }
             if (visuals != null)
