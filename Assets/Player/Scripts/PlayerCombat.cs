@@ -43,7 +43,8 @@ namespace AshenPaw
         public float CrossBiteVelocityX => !IsCrossBite || elapsed >= 0.4f ? 0f : Mathf.Clamp((CrossPosition((elapsed + Time.fixedDeltaTime) / 0.4f) - body.position.x) / Time.fixedDeltaTime, -28f, 28f);
         public bool IsCrossDashing => IsCrossBite && elapsed < 0.4f;
         public float CrossDashProgress => Mathf.Clamp01(elapsed / 0.4f);
-        public float CrossTurnYaw => IsCrossBite && elapsed < 0.24f ? Mathf.SmoothStep(0f, 1f, (elapsed - 0.06f) / 0.18f) * 180f : 0f;
+        public int CrossVisualDirection => crossDirection;
+        public float CrossTurnYaw => IsCrossBite ? Mathf.SmoothStep(0f, 1f, (elapsed - 0.06f) / 0.18f) * 180f : 0f;
         public int ComboStep { get; private set; }
         public int AttackFacing { get; private set; } = 1;
         public float ChargeAmount => Mathf.Clamp01(chargeTime / fullChargeTime);
@@ -495,7 +496,7 @@ namespace AshenPaw
             float t3 = t2 * t;
             float distance = crossDestinationX - crossStartX;
             float entry = Mathf.Max(6f, crossEntryVelocity * crossDirection);
-            float tangent = crossDirection * Mathf.Min(entry * 0.24f, Mathf.Abs(distance) * 3f);
+            float tangent = Mathf.Sign(distance) * Mathf.Min(entry * 0.24f, Mathf.Abs(distance) * 3f);
             return (2f * t3 - 3f * t2 + 1f) * crossStartX + (t3 - 2f * t2 + t) * tangent
                 + (-2f * t3 + 3f * t2) * crossDestinationX + (t3 - t2) * crossDirection * 3f * 0.24f;
         }
@@ -522,7 +523,7 @@ namespace AshenPaw
             if (crossTarget != null)
             {
                 float edge = crossDirection > 0 ? crossTarget.bounds.max.x : crossTarget.bounds.min.x;
-                crossDestinationX = crossDirection > 0 ? Mathf.Max(body.position.x, edge + 0.65f) : Mathf.Min(body.position.x, edge - 0.65f);
+                crossDestinationX = edge + crossDirection * 0.65f;
             }
         }
 
@@ -549,6 +550,19 @@ namespace AshenPaw
                 if (delta.x * movement.InputFacing() < -0.3f || Mathf.Abs(delta.y) > 1.6f || TerrainBlocks(origin, delta)) continue;
                 float score = Vector2.Dot(aim, delta.normalized) * 2f - delta.magnitude;
                 if (score > bestScore) { bestScore = score; best = targets[i]; }
+            }
+            if (best == null)
+            {
+                float nearest = 2.6f;
+                for (int i = 0; i < count; i++)
+                {
+                    var enemy = targets[i].GetComponentInParent<TestEnemy>();
+                    if (enemy == null || enemy.IsDead) continue;
+                    Vector2 delta = (Vector2)targets[i].ClosestPoint(origin) - origin;
+                    if (Mathf.Abs(delta.y) > 1.6f || delta.magnitude >= nearest || TerrainBlocks(origin, delta)) continue;
+                    nearest = delta.magnitude;
+                    best = targets[i];
+                }
             }
             return best;
         }

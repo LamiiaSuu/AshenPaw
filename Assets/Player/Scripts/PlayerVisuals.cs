@@ -88,6 +88,7 @@ namespace AshenPaw
         {
             if (visuals == null) return;
             bool animated = animator != null && animator.runtimeAnimatorController != null;
+            int visualFacing = combat != null && combat.IsCrossBite ? combat.CrossVisualDirection : movement.Facing;
             Vector2 stretch = Vector2.one;
             float rotation = 0f;
             if (!wasGrounded && movement.IsGrounded) landingSquash = 0.16f;
@@ -98,7 +99,7 @@ namespace AshenPaw
                 stretch.y = movement.IsCrouching ? movement.CrouchScale : 1f;
                 if (placeholderMotion)
                 {
-                    if (movement.IsDodging) rotation = -movement.Facing * 360f * movement.DodgeProgress;
+                    if (movement.IsDodging) rotation = -visualFacing * 360f * movement.DodgeProgress;
                     else if (!movement.IsCrouching)
                     {
                         float run = movement.IsGrounded ? Mathf.Sin(Time.time * 25f) * Mathf.Min(Mathf.Abs(body.linearVelocity.x) * 0.006f, 0.04f) : 0f;
@@ -108,17 +109,17 @@ namespace AshenPaw
                     }
                 }
             }
-            visuals.localScale = new Vector3(originalScale.x * stretch.x * movement.Facing, originalScale.y * stretch.y, originalScale.z);
+            visuals.localScale = new Vector3(originalScale.x * stretch.x * visualFacing, originalScale.y * stretch.y, originalScale.z);
             bool dashVisual = movement.IsDodging || combat != null && (combat.IsCrossDashing || combat.IsLunging);
             if (animated && feetPivot)
             {
                 if (movement.IsCrouching && !movement.IsDodging) stretch.y = movement.CrouchScale;
-                if (movement.IsWallSliding) rotation = movement.Facing * 25f;
+                if (movement.IsWallSliding) rotation = visualFacing * 25f;
                 if (dashVisual)
                 {
                     stretch.x = 1.3f;
                     stretch.y = 0.85f;
-                    rotation = movement.IsGrounded ? 0f : movement.Facing * -8f;
+                    rotation = movement.IsGrounded ? 0f : visualFacing * -8f;
                 }
                 else if (combat != null && combat.IsCharging)
                 {
@@ -129,7 +130,7 @@ namespace AshenPaw
                 {
                     stretch.x = 1.5f;
                     stretch.y = 0.72f;
-                    rotation = -movement.Facing * 8f;
+                    rotation = -visualFacing * 8f;
                 }
                 else if (combat != null && combat.IsAttacking)
                 {
@@ -146,7 +147,7 @@ namespace AshenPaw
                     stretch.x = 1f + landingSquash;
                     stretch.y = 1f - landingSquash;
                 }
-                visuals.localScale = new Vector3(originalScale.x * stretch.x * movement.Facing, originalScale.y * stretch.y, originalScale.z);
+                visuals.localScale = new Vector3(originalScale.x * stretch.x * visualFacing, originalScale.y * stretch.y, originalScale.z);
             }
             float dashProgress = movement.IsDodging ? movement.DodgeProgress : combat != null ? combat.CrossVisualProgress : 0f;
             float hop = animated && feetPivot && dashVisual ? Mathf.Sin(dashProgress * Mathf.PI) * 0.3f : 0f;
@@ -155,9 +156,9 @@ namespace AshenPaw
             if (combat != null && combat.IsAttacking && !combat.IsHeavyAttack && combat.ComboStep == 2)
             {
                 finisherHop = Mathf.Sin(combat.AttackProgress * Mathf.PI) * 0.55f;
-                rotation += movement.Facing * Mathf.Max(0f, Mathf.Sin(combat.AttackProgress * Mathf.PI * 2f)) * 25f;
+                rotation += visualFacing * Mathf.Max(0f, Mathf.Sin(combat.AttackProgress * Mathf.PI * 2f)) * 25f;
             }
-            if (combat != null && combat.IsAirDive) rotation = -movement.Facing * combat.DiveNoseAngle;
+            if (combat != null && combat.IsAirDive) rotation = -visualFacing * combat.DiveNoseAngle;
             bool airSpin = combat != null && combat.IsAirSpin;
             if (airSpin)
             {
@@ -168,10 +169,10 @@ namespace AshenPaw
                 float unfold = Mathf.SmoothStep(0f, 1f, (t - 0.76f) / 0.24f);
                 float curl = curlIn * (1f - unfold);
                 visuals.localScale = new Vector3(
-                    originalScale.x * movement.Facing * Mathf.Lerp(1f, 0.55f, curl),
+                    originalScale.x * visualFacing * Mathf.Lerp(1f, 0.55f, curl),
                     originalScale.y * Mathf.Lerp(1f, 1.12f, curl), originalScale.z);
                 float turn = Mathf.SmoothStep(0f, 1f, (t - 0.18f) / 0.58f);
-                rotation = -movement.Facing * 360f * turn;
+                rotation = -visualFacing * 360f * turn;
             }
             spinning = airSpin;
             float nosePivot = 0f;
@@ -180,7 +181,7 @@ namespace AshenPaw
             if (airSpin)
             {
                 Vector3 pivot = Vector3.Scale(spinPivot, visuals.localScale);
-                Vector3 center = Vector3.Scale(spinPivot, new Vector3(originalScale.x * movement.Facing, originalScale.y, originalScale.z));
+                Vector3 center = Vector3.Scale(spinPivot, new Vector3(originalScale.x * visualFacing, originalScale.y, originalScale.z));
                 visuals.localPosition += center - visuals.localRotation * pivot;
             }
             if (animated) UpdateAnimator();
