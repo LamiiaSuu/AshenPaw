@@ -38,7 +38,8 @@ namespace AshenPaw
                 cameraShake = Camera.main.GetComponent<HitCameraShake>();
                 if (cameraShake == null) cameraShake = Camera.main.gameObject.AddComponent<HitCameraShake>();
             }
-            if (cameraShake != null) cameraShake.Trigger();
+            if (Camera.main != null && Camera.main.GetComponent<CameraFeel>() != null) CameraFeel.Hit(true);
+            else if (cameraShake != null) cameraShake.Trigger();
             combat?.CancelAttack();
             rumblingPad = Gamepad.current;
             if (rumblingPad != null)

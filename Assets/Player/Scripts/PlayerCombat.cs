@@ -577,6 +577,7 @@ namespace AshenPaw
                 if (direction.sqrMagnitude > 0.001f && (IsAirLunge ? TerrainBlocks(origin, direction) : physics.Raycast(origin, direction.normalized, direction.magnitude, terrain, walls) > 0)) continue;
                 hitTargets.Add(enemy);
                 if (!enemy.TakeDamage(damage, Vector2.right * AttackFacing, CanInterruptEnemy)) continue;
+                CameraFeel.Hit(false, IsHeavyAttack);
             }
         }
 
