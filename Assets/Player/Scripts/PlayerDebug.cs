@@ -73,7 +73,7 @@ namespace AshenPaw
             {
                 var own = GetComponent<Collider2D>();
                 if (own != null && own.enabled) Outline(own.bounds, Color.cyan);
-                if (combat != null && combat.IsAttacking) Outline(combat.AttackHitbox, combat.DebugAttackActive ? Color.red : Color.yellow, combat.IsAirSpin);
+                if (combat != null && combat.IsAttacking) Outline(combat.AttackHitbox, combat.DebugAttackActive ? Color.red : Color.yellow, combat.IsAirSpin, combat.AttackHitboxAngle);
                 foreach (var enemy in enemies)
                 {
                     if (enemy == null) continue;
@@ -84,7 +84,7 @@ namespace AshenPaw
             }
             for (int i = lineCount; i < lines.Count; i++) lines[i].enabled = false;
         }
-        private void Outline(Bounds bounds, Color color, bool circle = false)
+        private void Outline(Bounds bounds, Color color, bool circle = false, float angle = 0f)
         {
             if (lineMaterial == null) lineMaterial = new Material(Shader.Find("Sprites/Default"));
             if (lineCount == lines.Count)
@@ -107,8 +107,8 @@ namespace AshenPaw
             {
                 for (int i = 0; i < 40; i++)
                 {
-                    float angle = i * Mathf.PI * 2f / 40f;
-                    line.SetPosition(i, bounds.center + new Vector3(Mathf.Cos(angle), Mathf.Sin(angle), 0f) * bounds.extents.x);
+                    float circleAngle = i * Mathf.PI * 2f / 40f;
+                    line.SetPosition(i, bounds.center + new Vector3(Mathf.Cos(circleAngle), Mathf.Sin(circleAngle), 0f) * bounds.extents.x);
                 }
             }
             else
@@ -118,6 +118,8 @@ namespace AshenPaw
                 line.SetPosition(1, new Vector3(bounds.max.x, bounds.min.y, z));
                 line.SetPosition(2, new Vector3(bounds.max.x, bounds.max.y, z));
                 line.SetPosition(3, new Vector3(bounds.min.x, bounds.max.y, z));
+                if (angle != 0f)
+                    for (int i = 0; i < 4; i++) line.SetPosition(i, bounds.center + Quaternion.Euler(0f, 0f, angle) * (line.GetPosition(i) - bounds.center));
             }
         }
         private void OnDestroy()

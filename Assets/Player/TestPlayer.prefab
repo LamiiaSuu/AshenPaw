@@ -169,6 +169,16 @@ MonoBehaviour:
   animator: {fileID: 5284853387427806145}
   placeholderMotion: 1
   feetPivot: 1
+  upwardAttacks:
+  - {fileID: 7400000, guid: d48db285e5f380248880383e252a28a2, type: 2}
+  - {fileID: 7400000, guid: 240d9e1c0f76d6141a646f04fa89a137, type: 2}
+  - {fileID: 7400000, guid: 7ce145036a4135445a3903e363a227f2, type: 2}
+  - {fileID: 7400000, guid: f05c8af6df0aca24a963861004acfdfc, type: 2}
+  downwardAttacks:
+  - {fileID: 7400000, guid: a43a51c854b1dd94dab4d2da8e1c154a, type: 2}
+  - {fileID: 7400000, guid: b04419ab3d349cc4ca9f705ffb4af187, type: 2}
+  - {fileID: 7400000, guid: fc71c125e336df1419f25f6cd9e086af, type: 2}
+  - {fileID: 7400000, guid: 0df5e08e3a7b9a144a460a9aa89a6f2d, type: 2}
 --- !u!114 &6085061164134902266
 MonoBehaviour:
   m_ObjectHideFlags: 0

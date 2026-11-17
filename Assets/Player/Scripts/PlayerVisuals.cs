@@ -16,6 +16,8 @@ namespace AshenPaw
         private PlayerHealth health;
         private Vector3 originalScale;
         private float landingSquash;
+        [SerializeField] private AnimationClip[] upwardAttacks;
+        [SerializeField] private AnimationClip[] downwardAttacks;
         private bool spinning;
         private Vector3 spinPivot;
         private bool wasGrounded;
@@ -88,7 +90,14 @@ namespace AshenPaw
         {
             if (visuals == null) return;
             bool animated = animator != null && animator.runtimeAnimatorController != null;
-            int visualFacing = combat != null && combat.IsCrossBite ? combat.CrossVisualDirection : movement.Facing;
+            int visualFacing = combat != null && combat.IsCrossBite ? combat.CrossVisualDirection : combat != null && combat.IsDirectionalAttack ? combat.AttackFacing : movement.Facing;
+            if (animated && combat != null && combat.IsDirectionalAttack && Mathf.Abs(combat.AttackDirection.y) > 0.25f)
+            {
+                var clips = combat.AttackDirection.y > 0f ? upwardAttacks : downwardAttacks;
+                int index = combat.IsHeavyAttack ? 3 : combat.ComboStep;
+                if (clips != null && index < clips.Length && clips[index] != null)
+                    clips[index].SampleAnimation(animator.gameObject, combat.AttackProgress * clips[index].length);
+            }
             Vector2 stretch = Vector2.one;
             float rotation = 0f;
             if (!wasGrounded && movement.IsGrounded) landingSquash = 0.16f;
@@ -151,11 +160,11 @@ namespace AshenPaw
             }
             float dashProgress = movement.IsDodging ? movement.DodgeProgress : combat != null ? combat.CrossVisualProgress : 0f;
             float hop = animated && feetPivot && dashVisual ? Mathf.Sin(dashProgress * Mathf.PI) * 0.3f : 0f;
-            float attackHop = combat != null && combat.IsAttacking && !combat.IsHeavyAttack && combat.ComboStep == 1 ? Mathf.Sin(combat.AttackProgress * Mathf.PI) * 0.28f : 0f;
+            float attackHop = combat != null && combat.IsAttacking && !combat.IsHeavyAttack && combat.ComboStep == 1 ? Mathf.Sin(combat.AttackProgress * Mathf.PI) * 0.10f : 0f;
             float finisherHop = 0f;
             if (combat != null && combat.IsAttacking && !combat.IsHeavyAttack && combat.ComboStep == 2)
             {
-                finisherHop = Mathf.Sin(combat.AttackProgress * Mathf.PI) * 0.55f;
+                finisherHop = Mathf.Sin(combat.AttackProgress * Mathf.PI) * 0.18f;
                 rotation += visualFacing * Mathf.Max(0f, Mathf.Sin(combat.AttackProgress * Mathf.PI * 2f)) * 25f;
             }
             if (combat != null && combat.IsAirDive) rotation = -visualFacing * combat.DiveNoseAngle;
@@ -174,10 +183,29 @@ namespace AshenPaw
                 float turn = Mathf.SmoothStep(0f, 1f, (t - 0.18f) / 0.58f);
                 rotation = -visualFacing * 360f * turn;
             }
+            bool aimedAttack = combat != null && combat.IsDirectionalAttack;
+            if (aimedAttack)
+            {
+                rotation = Mathf.Clamp(combat.AttackPoseAngle * 0.35f, -25f, 25f) * combat.AttackPoseWeight;
+                float snap = Mathf.Sin(combat.AttackProgress * Mathf.PI);
+                visuals.localScale = new Vector3(originalScale.x * visualFacing * (1f + snap * 0.06f), originalScale.y * (1f - snap * 0.04f), originalScale.z);
+            }
             spinning = airSpin;
             float nosePivot = 0f;
             visuals.localPosition = new Vector3(nosePivot, (feetPivot ? 0f : movement.CurrentHeight * 0.5f) + hop + attackHop + finisherHop + (combat != null ? combat.HeavySnapLift : 0f), 0f);
+            if (aimedAttack)
+            {
+                float directionalHop = attackHop + finisherHop + combat.HeavySnapLift;
+                visuals.localPosition -= Vector3.up * directionalHop;
+                visuals.localPosition += (Vector3)combat.AttackDirection * directionalHop;
+            }
             visuals.localRotation = Quaternion.Euler(0f, combat != null ? combat.CrossTurnYaw : 0f, rotation);
+            if (aimedAttack && bodySprite != null && bodySprite.sprite != null)
+            {
+                Vector3 aimPivot = visuals.InverseTransformPoint(bodySprite.transform.TransformPoint(bodySprite.sprite.bounds.center));
+                Vector3 pivot = Vector3.Scale(aimPivot, visuals.localScale);
+                visuals.localPosition += pivot - visuals.localRotation * pivot;
+            }
             if (airSpin)
             {
                 Vector3 pivot = Vector3.Scale(spinPivot, visuals.localScale);

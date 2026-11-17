@@ -198,7 +198,7 @@ namespace AshenPaw
                 return;
             }
 
-            if (combat != null && (combat.IsCrossBite || combat.IsSnapBite) && !combat.IsRecovering)
+            if (combat != null && (combat.IsCrossBite || combat.IsSnapBite && !combat.IsDirectionalAttack) && !combat.IsRecovering)
             {
                 facing = combat.AttackFacing;
                 Vector2 strikeVelocity = body.linearVelocity;
@@ -236,7 +236,12 @@ namespace AshenPaw
                 float rate = IsGrounded ? move == 0f ? braking : acceleration : airAcceleration;
                 velocity.x = Mathf.MoveTowards(velocity.x, move * speed, rate * dt);
             }
-            if (combat != null && combat.IsHeavySnap) velocity.x = combat.AttackFacing * combat.HeavySnapSpeed;
+            if (combat != null && combat.DirectionalBurstActive)
+            {
+                Vector2 burst = combat.DirectionalBurstVelocity;
+                velocity.x = burst.x;
+                if (Mathf.Abs(combat.AttackDirection.y) > 0.1f) velocity.y = burst.y;
+            }
             if (combat != null && combat.LocksFacing) facing = combat.AttackFacing;
             else if (move != 0f && clock >= wallLockUntil) facing = (int)Mathf.Sign(move);
 

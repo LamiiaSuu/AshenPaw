@@ -22,6 +22,33 @@ namespace AshenPaw
         private float attackCooldownRemaining;
 
         public bool DebugAttackActive => dashStrikeActive || IsLunging && IsAirDive || IsAttacking && elapsed >= windup && elapsed < windup + activeTime;
+        private Vector2 attackAim = Vector2.right;
+        public Vector2 AttackDirection => attackAim;
+        public bool DirectionalBurstActive => IsDirectionalAttack && !IsRecovering && (IsSnapBite || !IsHeavyAttack && ComboStep == 2 && elapsed >= windup || IsHeavySnap);
+        public Vector2 DirectionalBurstVelocity => attackAim * (IsSnapBite ? Mathf.Lerp(12f, 3f, Mathf.Clamp01(elapsed / 0.14f)) : IsHeavySnap ? HeavySnapSpeed : 6f * Mathf.Sin(Mathf.Clamp01((elapsed - windup) / activeTime) * Mathf.PI));
+        public float AttackPoseWeight => !IsAttacking ? 0f : Mathf.SmoothStep(0f, 1f, elapsed / Mathf.Max(0.01f, windup)) * (1f - Mathf.SmoothStep(0f, 1f, (elapsed - windup - activeTime) / Mathf.Max(0.01f, recovery)));
+
+        public bool IsDirectionalAttack => IsAttacking && !IsDashAttack && !IsCrossBite && !IsAirSpin && !IsAirLunge && !IsAirDive;
+        public float AttackHitboxAngle => IsDirectionalAttack ? Mathf.Atan2(attackAim.y, attackAim.x) * Mathf.Rad2Deg : 0f;
+        public float AttackPoseAngle => IsDirectionalAttack ? Mathf.Atan2(attackAim.y, Mathf.Abs(attackAim.x)) * Mathf.Rad2Deg * AttackFacing : 0f;
+        private Vector2 ReadAimInput()
+        {
+            Vector2 input = Vector2.zero;
+            var keys = Keyboard.current;
+            if (keys != null) input = new Vector2(
+                (keys.dKey.isPressed || keys.rightArrowKey.isPressed ? 1f : 0f) - (keys.aKey.isPressed || keys.leftArrowKey.isPressed ? 1f : 0f),
+                (keys.wKey.isPressed || keys.upArrowKey.isPressed ? 1f : 0f) - (keys.sKey.isPressed || keys.downArrowKey.isPressed ? 1f : 0f));
+            var pad = Gamepad.current;
+            if (input.sqrMagnitude < 0.1f && pad != null)
+            {
+                input = pad.leftStick.ReadValue();
+                if (input.magnitude < 0.35f) input = pad.dpad.ReadValue();
+                if (input.magnitude < 0.35f) input = Vector2.zero;
+            }
+            if (input.sqrMagnitude < 0.1f) return Vector2.zero;
+            float angle = Mathf.Round(Mathf.Atan2(input.y, input.x) / (Mathf.PI / 4f)) * Mathf.PI / 4f;
+            return new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
+        }
         public bool IsAttacking { get; private set; }
         public bool IsCharging { get; private set; }
         public bool IsHeavyAttack { get; private set; }
@@ -308,7 +335,7 @@ namespace AshenPaw
 
         private void StartLight(int step)
         {
-            if (!movement.IsGrounded)
+            if (!movement.IsGrounded && ReadAimInput().sqrMagnitude < 0.1f)
             {
                 if (airSpinUsed) return;
                 airSpinUsed = true;
@@ -323,6 +350,7 @@ namespace AshenPaw
                 IsAirSpin = true;
                 return;
             }
+            if (!movement.IsGrounded) { if (airSpinUsed) return; airSpinUsed = true; }
             ComboStep = step;
             IsHeavyAttack = false;
             IsDashAttack = false;
@@ -587,7 +615,9 @@ namespace AshenPaw
             IsAttacking = true;
             elapsed = queuedLight = hitPause = 0f;
             strikeStarted = false;
-            AttackFacing = movement.InputFacing();
+            attackAim = ReadAimInput();
+            if (attackAim.sqrMagnitude < 0.1f) attackAim = Vector2.right * movement.InputFacing();
+            AttackFacing = Mathf.Abs(attackAim.x) > 0.1f ? (attackAim.x > 0f ? 1 : -1) : movement.Facing;
             hitTargets.Clear();
         }
 
@@ -595,7 +625,7 @@ namespace AshenPaw
         {
             Bounds box = AttackHitbox;
             Vector2 origin = body.position + Vector2.up * 0.75f;
-            FindHitsAt(box, origin);
+            FindHitsAt(box, origin, AttackHitboxAngle);
         }
 
         private void FixedUpdate()
@@ -616,10 +646,10 @@ namespace AshenPaw
             lastDashPosition = end;
         }
 
-        private void FindHitsAt(Bounds box, Vector2 origin)
+        private void FindHitsAt(Bounds box, Vector2 origin, float angle = 0f)
         {
             var filter = new ContactFilter2D { useTriggers = false, useLayerMask = true, layerMask = enemyLayers };
-            int count = IsAirSpin ? physics.OverlapCircle(box.center, 1.6f, filter, targets) : physics.OverlapBox(box.center, box.size, 0f, filter, targets);
+            int count = IsAirSpin ? physics.OverlapCircle(box.center, 1.6f, filter, targets) : physics.OverlapBox(box.center, box.size, angle, filter, targets);
             for (int i = 0; i < count; i++)
             {
                 var enemy = targets[i].GetComponentInParent<TestEnemy>();
@@ -629,7 +659,7 @@ namespace AshenPaw
                 var terrain = new ContactFilter2D { useTriggers = false, useLayerMask = true, layerMask = terrainLayers };
                 if (direction.sqrMagnitude > 0.001f && (IsAirLunge ? TerrainBlocks(origin, direction) : physics.Raycast(origin, direction.normalized, direction.magnitude, terrain, walls) > 0)) continue;
                 hitTargets.Add(enemy);
-                if (!enemy.TakeDamage(damage, Vector2.right * AttackFacing, CanInterruptEnemy)) continue;
+                if (!enemy.TakeDamage(damage, IsDirectionalAttack ? attackAim : Vector2.right * AttackFacing, CanInterruptEnemy)) continue;
                 CameraFeel.Hit(false, IsHeavyAttack);
             }
         }
@@ -665,7 +695,8 @@ namespace AshenPaw
                 if (IsAirDive) return new Bounds(feet + Vector2.up * 0.35f, new Vector3(2.4f, 1.6f, 0f));
                 if (IsAirSpin) return new Bounds(feet + Vector2.up * 0.75f, new Vector3(3.2f, 3.2f, 0f));
                 if (IsCrossBite) return new Bounds(feet + new Vector2(direction * 0.95f, 0.75f), new Vector3(1.9f, 1.25f, 0f));
-                if (IsSnapBite) return new Bounds(feet + new Vector2(direction * 1f, 0.75f), new Vector3(1.9f, 1.1f, 0f));
+                if (IsSnapBite && !IsDirectionalAttack) return new Bounds(feet + new Vector2(direction * 1f, 0.75f), new Vector3(1.9f, 1.1f, 0f));
+                if (IsDirectionalAttack) return new Bounds(feet + Vector2.up * 0.75f + attackAim * ((IsSnapBite ? 1.9f : reach) * 0.5f + 0.25f), new Vector3(IsSnapBite ? 1.9f : reach, IsSnapBite ? 1.1f : 1.25f, 0f));
                 return new Bounds(feet + new Vector2(direction * (reach * 0.5f + 0.25f), 0.75f), new Vector3(reach, 1.25f, 0f));
             }
         }
@@ -677,7 +708,13 @@ namespace AshenPaw
             bool active = IsLunging && IsAirDive || dashStrikeActive || !IsDashAttack && IsAttacking && elapsed >= windup && elapsed < windup + activeTime;
             Gizmos.color = active ? Color.red : IsCharging || IsHeavyAttack && IsAttacking ? new Color(1f, 0.55f, 0.15f) : Color.cyan;
             if (IsAirSpin) Gizmos.DrawWireSphere(box.center, 1.6f);
-            else Gizmos.DrawWireCube(box.center, box.size);
+            else
+            {
+                var previous = Gizmos.matrix;
+                Gizmos.matrix = Matrix4x4.TRS(box.center, Quaternion.Euler(0f, 0f, AttackHitboxAngle), Vector3.one);
+                Gizmos.DrawWireCube(Vector3.zero, box.size);
+                Gizmos.matrix = previous;
+            }
         }
         private void OnApplicationFocus(bool focused) { if (!focused) { CancelAttack(); heavyHeld = false; } }
     }
