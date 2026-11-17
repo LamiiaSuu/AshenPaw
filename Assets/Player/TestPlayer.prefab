@@ -181,20 +181,24 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c704b7ffc72c2bc4d812e2b2406e426a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AshenPaw.PlayerCombat
+  showHitbox: 1
   enemyLayers:
     serializedVersion: 2
     m_Bits: 256
   terrainLayers:
     serializedVersion: 2
     m_Bits: 4294966527
+  lightReach: 1.65
+  heavyReach: 2.6
+  dashForwardReach: 1.2
   lightDamage: 6
   heavyDamage: 12
   fullyChargedDamage: 28
   fullChargeTime: 1.1
-  effectSprite: {fileID: 7482667652216324306, guid: a4e1749621430d04ba58964af8e2adcc, type: 3}
-  effectMaterial: {fileID: 2100000, guid: e58fdff675357f44a89c9c56db875c58, type: 2}
-  chargeFill: {fileID: 0}
-  chargeBackground: {fileID: 0}
+  comboCooldown: 0.12
+  airBiteRange: 6
+  crossBiteDamage: 18
+  crossHoldThreshold: 0.18
 --- !u!1 &734759489180029842
 GameObject:
   m_ObjectHideFlags: 0
@@ -424,7 +428,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 20
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 4723107735738678597, guid: 65ce04a314a3e004db85835265c4d414, type: 3}
+  m_Sprite: {fileID: 4723107735738678597, guid: 2f0f25069e87d04449ab15a5b5b8105e, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0

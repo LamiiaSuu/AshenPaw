@@ -117,25 +117,25 @@ namespace AshenPaw
                 if (movement.IsWallSliding) rotation = visualFacing * 25f;
                 if (dashVisual)
                 {
-                    stretch.x = 1.3f;
-                    stretch.y = 0.85f;
+                    stretch.x = 1.12f;
+                    stretch.y = 0.94f;
                     rotation = movement.IsGrounded ? 0f : visualFacing * -8f;
                 }
                 else if (combat != null && combat.IsCharging)
                 {
-                    stretch.x = 1.05f + combat.ChargeAmount * 0.15f;
-                    stretch.y = 0.85f - combat.ChargeAmount * 0.2f;
+                    stretch.x = 1f + combat.ChargeAmount * 0.06f;
+                    stretch.y = 1f - Mathf.SmoothStep(0f, 1f, combat.ChargeAmount) * 0.12f;
                 }
                 else if (combat != null && combat.IsSnapBite)
                 {
-                    stretch.x = 1.5f;
-                    stretch.y = 0.72f;
+                    stretch.x = 1.15f;
+                    stretch.y = 0.94f;
                     rotation = -visualFacing * 8f;
                 }
                 else if (combat != null && combat.IsAttacking)
                 {
-                    stretch.x = combat.IsHeavyAttack ? 1.4f : combat.ComboStep == 0 ? 1.2f : combat.ComboStep == 1 ? 0.95f : 1.35f;
-                    stretch.y = combat.IsHeavyAttack ? 0.8f : combat.ComboStep == 0 ? 0.9f : combat.ComboStep == 1 ? 1.12f : 0.78f;
+                    stretch.x = combat.IsHeavyAttack ? 1.12f : combat.ComboStep == 0 ? 1.08f : combat.ComboStep == 1 ? 0.98f : 1.12f;
+                    stretch.y = combat.IsHeavyAttack ? 0.94f : combat.ComboStep == 0 ? 0.96f : combat.ComboStep == 1 ? 1.04f : 0.94f;
                 }
                 if (movement.IsGrounded && landingSquash > 0f)
                 {
@@ -169,14 +169,14 @@ namespace AshenPaw
                 float unfold = Mathf.SmoothStep(0f, 1f, (t - 0.76f) / 0.24f);
                 float curl = curlIn * (1f - unfold);
                 visuals.localScale = new Vector3(
-                    originalScale.x * visualFacing * Mathf.Lerp(1f, 0.55f, curl),
-                    originalScale.y * Mathf.Lerp(1f, 1.12f, curl), originalScale.z);
+                    originalScale.x * visualFacing * Mathf.Lerp(1f, 0.78f, curl),
+                    originalScale.y * Mathf.Lerp(1f, 1.02f, curl), originalScale.z);
                 float turn = Mathf.SmoothStep(0f, 1f, (t - 0.18f) / 0.58f);
                 rotation = -visualFacing * 360f * turn;
             }
             spinning = airSpin;
             float nosePivot = 0f;
-            visuals.localPosition = new Vector3(nosePivot, (feetPivot ? 0f : movement.CurrentHeight * 0.5f) + hop + attackHop + finisherHop, 0f);
+            visuals.localPosition = new Vector3(nosePivot, (feetPivot ? 0f : movement.CurrentHeight * 0.5f) + hop + attackHop + finisherHop + (combat != null ? combat.HeavySnapLift : 0f), 0f);
             visuals.localRotation = Quaternion.Euler(0f, combat != null ? combat.CrossTurnYaw : 0f, rotation);
             if (airSpin)
             {
@@ -235,6 +235,8 @@ namespace AshenPaw
             SetFloat("Speed", Mathf.Abs(body.linearVelocity.x));
             SetFloat("VerticalSpeed", body.linearVelocity.y);
             SetBool("Grounded", movement.IsGrounded);
+            SetBool("Hurt", health != null && health.IsHitFlashing);
+            SetBool("AirSpin", combat != null && combat.IsAirSpin);
             SetBool("Crouching", movement.IsCrouching);
             SetBool("Rolling", movement.IsDodging);
             SetBool("WallSliding", movement.IsWallSliding);

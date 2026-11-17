@@ -235,6 +235,7 @@ namespace AshenPaw
                 float rate = IsGrounded ? move == 0f ? braking : acceleration : airAcceleration;
                 velocity.x = Mathf.MoveTowards(velocity.x, move * speed, rate * dt);
             }
+            if (combat != null && combat.IsHeavySnap) velocity.x = combat.AttackFacing * combat.HeavySnapSpeed;
             if (combat != null && combat.LocksFacing) facing = combat.AttackFacing;
             else if (move != 0f && clock >= wallLockUntil) facing = (int)Mathf.Sign(move);
 

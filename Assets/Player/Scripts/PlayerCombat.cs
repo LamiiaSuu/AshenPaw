@@ -55,6 +55,10 @@ namespace AshenPaw
         public bool HasHitPause => hitPause > 0f;
         public float MovementMultiplier => IsRecovering ? 1f : HasHitPause ? 0f : IsCharging ? 0.1f : IsAttacking ? 0.3f : 1f;
         public float AttackProgress => Mathf.Clamp01(elapsed / Mathf.Max(0.01f, windup + activeTime + recovery));
+        public bool IsHeavySnap => IsAttacking && IsHeavyAttack && !IsDashAttack && !IsCrossBite && !IsSnapBite && !IsAirLunge && releasedCharge > 0.15f && elapsed >= windup && elapsed < windup + activeTime;
+        public float HeavySnapPulse => IsHeavySnap ? Mathf.Sin(Mathf.Clamp01((elapsed - windup) / activeTime) * Mathf.PI) : 0f;
+        public float HeavySnapSpeed => Mathf.Lerp(2.5f, 5f, releasedCharge) * HeavySnapPulse;
+        public float HeavySnapLift => Mathf.Lerp(0.04f, 0.12f, releasedCharge) * HeavySnapPulse;
         public bool CanInterruptEnemy => IsHeavyAttack && releasedCharge >= 0.8f;
 
         private PlayerMovement movement;
