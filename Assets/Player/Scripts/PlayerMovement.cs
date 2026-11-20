@@ -22,7 +22,7 @@ namespace AshenPaw
         [SerializeField] private float jumpBuffer = 0.12f;
         [Header("Wall")]
         [SerializeField] private float wallSlideSpeed = 3f;
-        [SerializeField] private Vector2 wallJumpSpeed = new Vector2(9.5f, 14.5f);
+        [SerializeField] private Vector2 wallJumpSpeed = new Vector2(13.5f, 14.5f);
         [SerializeField] private float wallJumpLock = 0.14f;
         [Header("Dodge")]
         [SerializeField] private float dodgeSpeed = 13f;

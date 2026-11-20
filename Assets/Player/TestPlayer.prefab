@@ -127,7 +127,7 @@ MonoBehaviour:
   coyoteTime: 0.1
   jumpBuffer: 0.12
   wallSlideSpeed: 3
-  wallJumpSpeed: {x: 9.5, y: 14.5}
+  wallJumpSpeed: {x: 13.5, y: 14.5}
   wallJumpLock: 0.14
   dodgeSpeed: 13
   dodgeDuration: 0.3
@@ -139,7 +139,7 @@ MonoBehaviour:
   crouchingHeight: 0.9
   groundLayers:
     serializedVersion: 2
-    m_Bits: 4294966527
+    m_Bits: 55
 --- !u!114 &5494331777631242886
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -197,7 +197,7 @@ MonoBehaviour:
     m_Bits: 256
   terrainLayers:
     serializedVersion: 2
-    m_Bits: 4294966527
+    m_Bits: 55
   lightReach: 1.65
   heavyReach: 2.6
   dashForwardReach: 1.2
