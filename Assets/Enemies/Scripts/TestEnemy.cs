@@ -104,6 +104,7 @@ namespace AshenPaw
 
         private void FixedUpdate() => Tick(Time.fixedDeltaTime);
 
+        public float DebugHitStunRemaining => state == State.Hurt ? Mathf.Max(0f, (dummyMode ? 0.58f : 0.28f) - stateTime) : 0f;
         public bool DebugIsAttacking => state == State.Windup || state == State.Attack || state == State.SecondWindup || state == State.SecondAttack || state == State.Recover;
         public bool DebugAttackActive => state == State.Attack || state == State.SecondAttack;
         public string DebugInfo => (dummyMode ? "Dummy" : "Skeleton") + "  " + Health + "/" + MaxHealth + " HP  |  " + state;
@@ -240,6 +241,7 @@ namespace AshenPaw
         public bool TakeDamage(int damage, Vector2 direction, bool heavy)
         {
             if (damage <= 0 || state == State.Dead || state == State.Reviving || state == State.Breaking) return false;
+            int actualDamage = Mathf.Min(Health, damage);
             Health = Mathf.Max(0, Health - damage);
             flashTime = 0.12f;
             if (Health == 0)
@@ -249,6 +251,7 @@ namespace AshenPaw
             }
             else if (dummyMode || heavy || state == State.Idle || state == State.Chase || state == State.Hurt)
                 ChangeState(State.Hurt);
+            PlayerDebug.Report(actualDamage, false, capsule.bounds.center + Vector3.up * (capsule.bounds.extents.y + 0.3f), "ENEMY HIT", this);
             return true;
         }
 

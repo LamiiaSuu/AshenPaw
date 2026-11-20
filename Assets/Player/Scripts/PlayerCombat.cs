@@ -49,6 +49,13 @@ namespace AshenPaw
             float angle = Mathf.Round(Mathf.Atan2(input.y, input.x) / (Mathf.PI / 4f)) * Mathf.PI / 4f;
             return new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
         }
+        public float DebugStartup => windup;
+        public float DebugActive => activeTime;
+        public float DebugRecovery => recovery;
+        public float DebugRemainingAttackTime => Mathf.Max(0f, windup + activeTime + recovery - elapsed) + (!IsHeavyAttack && ComboStep == 2 ? comboCooldown : 0f);
+        public string DebugAttackName => IsAirDive ? "Dive attack" : IsAirLunge ? "Air bite" : IsCrossBite ? "Cross bite" : IsDashAttack ? "Dash strike" : IsSnapBite ? "Snap bite" : IsAirSpin ? "Air spin" : IsHeavyAttack ? "Heavy bite" : "Light " + (ComboStep + 1);
+        public string DebugTimingInfo => $"Startup {windup * 1000f:0} ms ({windup * 60f:0.#}f)\nActive {activeTime * 1000f:0} ms ({activeTime * 60f:0.#}f)\nRecovery {recovery * 1000f:0} ms ({recovery * 60f:0.#}f)\nAttack lock {attackCooldownRemaining * 1000f:0} ms\nFrames use a 60 FPS timing reference.";
+        public string DebugAttackPhase => IsCharging ? "Charging" : !IsAttacking ? (attackCooldownRemaining > 0f ? "Cooldown" : "Ready") : IsLunging ? "Approach" : elapsed < windup ? "Startup" : elapsed < windup + activeTime ? "Active" : "Recovery";
         public bool IsAttacking { get; private set; }
         public bool IsCharging { get; private set; }
         public bool IsHeavyAttack { get; private set; }
@@ -619,6 +626,7 @@ namespace AshenPaw
             if (attackAim.sqrMagnitude < 0.1f) attackAim = Vector2.right * movement.InputFacing();
             AttackFacing = Mathf.Abs(attackAim.x) > 0.1f ? (attackAim.x > 0f ? 1 : -1) : movement.Facing;
             hitTargets.Clear();
+            PlayerDebug.ReportAttack();
         }
 
         private void FindHits()

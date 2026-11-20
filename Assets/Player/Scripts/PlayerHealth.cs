@@ -29,9 +29,13 @@ namespace AshenPaw
 
         public bool TakeDamage(int damage, Vector2 direction)
         {
-            if (GetComponent<PlayerDebug>() is PlayerDebug debug && debug.Invincible) return false;
-            if (damage <= 0 || movement.IsInvulnerable || Time.time < protectedUntil) return false;
+            if (damage <= 0) return false;
+            if (movement.IsInvulnerable) { PlayerDebug.Report(0, true, transform.position + Vector3.up * 2f, "DODGED"); return false; }
+            if (GetComponent<PlayerDebug>() is PlayerDebug debug && debug.Invincible) { PlayerDebug.Report(0, true, transform.position + Vector3.up * 2f, "INVINCIBLE"); return false; }
+            if (Time.time < protectedUntil) { PlayerDebug.Report(0, true, transform.position + Vector3.up * 2f, "PROTECTED"); return false; }
+            int actualDamage = Mathf.Min(Health, damage);
             Health = Mathf.Max(0, Health - damage);
+            PlayerDebug.Report(actualDamage, true, transform.position + Vector3.up * 2f, "PLAYER HIT");
             protectedUntil = Time.time + 0.45f;
             flashUntil = Time.time + 0.22f;
             if (cameraShake == null && Camera.main != null)
