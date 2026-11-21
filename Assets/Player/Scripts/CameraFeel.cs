@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace AshenPaw
 {
@@ -9,6 +10,9 @@ namespace AshenPaw
         [SerializeField] private PlayerMovement target;
         [SerializeField, Min(0f)] private float followDelay = 0.16f;
         [SerializeField] private Vector2 framing = new Vector2(0f, 1.5f);
+        [SerializeField, Min(0f)] private float crouchLookDown;
+        [SerializeField, Min(0f)] private float lookUpDistance;
+        [SerializeField, Min(0f)] private float crouchLookTime = 0.48f;
         [SerializeField, Range(3f, 12f)] private float zoom = 7f;
         [SerializeField] private bool limitView = true;
         [SerializeField] private Vector2 levelMin = new Vector2(-21f, -5f);
@@ -22,6 +26,8 @@ namespace AshenPaw
         private HitCameraShake shake;
         private Rigidbody2D targetBody;
         private Vector3 velocity;
+        private float lookOffset;
+        private float lookVelocity;
         private bool tracking, wasGrounded, wasDodging, frozen;
         private float thawAt, oldTimeScale, flashUntil;
         private float frozenFixedDelta;
@@ -33,6 +39,8 @@ namespace AshenPaw
             if (shake == null) shake = gameObject.AddComponent<HitCameraShake>();
             tracking = false;
             velocity = Vector3.zero;
+            lookOffset = 0f;
+            lookVelocity = 0f;
         }
 
         public static void Hit(bool hurt, bool heavy = false)
@@ -72,11 +80,14 @@ namespace AshenPaw
             if (target == null)
             {
                 target = FindAnyObjectByType<PlayerMovement>();
-                if (frozen) return;
-            if (target == null) return;
+                if (target == null) return;
             }
             if (targetBody == null) targetBody = target.GetComponent<Rigidbody2D>();
             Vector3 desired = target.transform.position + (Vector3)framing;
+            float requestedLookOffset = GetLookOffset();
+            lookOffset = Mathf.SmoothDamp(lookOffset, requestedLookOffset, ref lookVelocity, crouchLookTime);
+            float minViewY = levelMin.y + Mathf.Min(0f, lookOffset);
+            float maxViewY = levelMax.y + Mathf.Max(0f, lookOffset);
             desired.z = transform.position.z;
             view.orthographicSize = Mathf.Lerp(view.orthographicSize, zoom, 1f - Mathf.Exp(-10f * Time.deltaTime));
             if (limitView)
@@ -86,13 +97,14 @@ namespace AshenPaw
                 desired.x = Bound(desired.x, levelMin.x, levelMax.x, halfX);
                 desired.y = Bound(desired.y, levelMin.y, levelMax.y, halfY);
             }
+            desired.y += lookOffset;
             bool teleport = tracking && Vector2.Distance(transform.position, desired) > 18f;
             transform.position = !tracking || teleport || followDelay <= 0f ? desired : Vector3.SmoothDamp(transform.position, desired, ref velocity, followDelay, Mathf.Infinity, Mathf.Max(0.0001f, Time.deltaTime));
             if (limitView)
             {
                 Vector3 bounded = transform.position;
                 bounded.x = Bound(bounded.x, levelMin.x, levelMax.x, view.orthographicSize * view.aspect);
-                bounded.y = Bound(bounded.y, levelMin.y, levelMax.y, view.orthographicSize);
+                bounded.y = Bound(bounded.y, minViewY, maxViewY, view.orthographicSize);
                 transform.position = bounded;
             }
             if (tracking)
@@ -103,6 +115,18 @@ namespace AshenPaw
             wasGrounded = target.IsGrounded;
             wasDodging = target.IsDodging;
             tracking = true;
+        }
+
+        private float GetLookOffset()
+        {
+            if (!target.IsGrounded || target.IsDodging) return 0f;
+            if (target.IsCrouching && target.IsDuckHeld) return -crouchLookDown;
+
+            var keyboard = Keyboard.current;
+            var pad = Gamepad.current;
+            bool lookingUp = keyboard != null && (keyboard.wKey.isPressed || keyboard.upArrowKey.isPressed)
+                || pad != null && (pad.leftStick.y.ReadValue() > 0.5f || pad.dpad.up.isPressed);
+            return lookingUp ? lookUpDistance : 0f;
         }
 
         private static float Bound(float value, float min, float max, float extent)

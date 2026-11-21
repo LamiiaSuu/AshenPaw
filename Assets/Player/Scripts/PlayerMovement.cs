@@ -43,6 +43,7 @@ namespace AshenPaw
         public bool DownHeld => duckHeld;
         public bool IsGrounded { get; private set; }
         public bool IsCrouching { get; private set; }
+        public bool IsDuckHeld => duckHeld;
         public bool IsDodging { get; private set; }
         public bool IsWallSliding { get; private set; }
         public int WallSlideFacing => wallDirection;
