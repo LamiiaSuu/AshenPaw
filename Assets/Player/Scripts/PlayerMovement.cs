@@ -45,6 +45,8 @@ namespace AshenPaw
         public bool IsCrouching { get; private set; }
         public bool IsDodging { get; private set; }
         public bool IsWallSliding { get; private set; }
+        public int WallSlideFacing => wallDirection;
+        public bool IsWallJumping => !IsGrounded && !IsHitStunned && clock < wallLockUntil;
         public int Facing => facing;
         public bool HasBufferedDodge => dodgeQueued;
         private float dodgeBufferUntil = float.NegativeInfinity;

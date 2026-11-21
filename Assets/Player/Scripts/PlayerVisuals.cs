@@ -98,6 +98,8 @@ namespace AshenPaw
                 if (clips != null && index < clips.Length && clips[index] != null)
                     clips[index].SampleAnimation(animator.gameObject, combat.AttackProgress * clips[index].length);
             }
+            if (movement.IsWallSliding && (combat == null || !combat.IsAttacking && !combat.IsCharging))
+                visualFacing = movement.WallSlideFacing;
             Vector2 stretch = Vector2.one;
             float rotation = 0f;
             if (!wasGrounded && movement.IsGrounded) landingSquash = 0.16f;
@@ -122,8 +124,6 @@ namespace AshenPaw
             bool dashVisual = movement.IsDodging || combat != null && (combat.IsCrossDashing || combat.IsLunging);
             if (animated && feetPivot)
             {
-                if (movement.IsCrouching && !movement.IsDodging) stretch.y = movement.CrouchScale;
-                if (movement.IsWallSliding) rotation = visualFacing * 25f;
                 if (dashVisual)
                 {
                     stretch.x = 1.12f;
@@ -146,6 +146,8 @@ namespace AshenPaw
                     stretch.x = combat.IsHeavyAttack ? 1.12f : combat.ComboStep == 0 ? 1.08f : combat.ComboStep == 1 ? 0.98f : 1.12f;
                     stretch.y = combat.IsHeavyAttack ? 0.94f : combat.ComboStep == 0 ? 0.96f : combat.ComboStep == 1 ? 1.04f : 0.94f;
                 }
+                if (movement.IsCrouching && !dashVisual && (combat == null || !combat.IsAttacking && !combat.IsCharging))
+                    stretch.y *= 0.9f;
                 if (movement.IsGrounded && landingSquash > 0f)
                 {
                     stretch.x *= 1f + landingSquash;
@@ -266,8 +268,9 @@ namespace AshenPaw
             SetBool("Hurt", health != null && health.IsHitFlashing);
             SetBool("AirSpin", combat != null && combat.IsAirSpin);
             SetBool("Crouching", movement.IsCrouching);
-            SetBool("Rolling", movement.IsDodging);
+            SetBool("Rolling", movement.IsDodging && (combat == null || !combat.IsDashAttack));
             SetBool("WallSliding", movement.IsWallSliding);
+            SetBool("WallJumping", movement.IsWallJumping);
             SetBool("Invulnerable", movement.IsInvulnerable);
             if (combat != null)
             {
