@@ -24,13 +24,16 @@ namespace AshenPaw
         public bool DebugAttackActive => dashStrikeActive || IsLunging && IsAirDive || IsAttacking && elapsed >= windup && elapsed < windup + activeTime;
         private Vector2 attackAim = Vector2.right;
         public Vector2 AttackDirection => attackAim;
-        public bool DirectionalBurstActive => IsDirectionalAttack && !IsRecovering && (IsSnapBite || !IsHeavyAttack && ComboStep == 2 && elapsed >= windup || IsHeavySnap);
+        public bool DirectionalBurstActive => IsStandardAttack && !IsRecovering && (!IsHeavyAttack && ComboStep == 2 && elapsed >= windup || IsHeavySnap);
         public Vector2 DirectionalBurstVelocity => attackAim * (IsSnapBite ? Mathf.Lerp(12f, 3f, Mathf.Clamp01(elapsed / 0.14f)) : IsHeavySnap ? HeavySnapSpeed : 6f * Mathf.Sin(Mathf.Clamp01((elapsed - windup) / activeTime) * Mathf.PI));
         public float AttackPoseWeight => !IsAttacking ? 0f : Mathf.SmoothStep(0f, 1f, elapsed / Mathf.Max(0.01f, windup)) * (1f - Mathf.SmoothStep(0f, 1f, (elapsed - windup - activeTime) / Mathf.Max(0.01f, recovery)));
 
-        public bool IsDirectionalAttack => IsAttacking && !IsDashAttack && !IsCrossBite && !IsAirSpin && !IsAirLunge && !IsAirDive;
+        private bool IsStandardAttack => IsAttacking && !IsDashAttack && !IsCrossBite && !IsAirSpin && !IsAirLunge && !IsAirDive;
+        // public bool IsDirectionalAttack => IsStandardAttack;
+        public bool IsDirectionalAttack => false;
         public float AttackHitboxAngle => IsDirectionalAttack ? Mathf.Atan2(attackAim.y, attackAim.x) * Mathf.Rad2Deg : 0f;
         public float AttackPoseAngle => IsDirectionalAttack ? Mathf.Atan2(attackAim.y, Mathf.Abs(attackAim.x)) * Mathf.Rad2Deg * AttackFacing : 0f;
+        /*
         private Vector2 ReadAimInput()
         {
             Vector2 input = Vector2.zero;
@@ -49,6 +52,7 @@ namespace AshenPaw
             float angle = Mathf.Round(Mathf.Atan2(input.y, input.x) / (Mathf.PI / 4f)) * Mathf.PI / 4f;
             return new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
         }
+        */
         public float DebugStartup => windup;
         public float DebugActive => activeTime;
         public float DebugRecovery => recovery;
@@ -87,7 +91,7 @@ namespace AshenPaw
         public bool IsRecovering => attackCooldownRemaining > 0f || IsAttacking && (!IsDashAttack || !dashStrikeActive) && elapsed >= windup + activeTime;
         public bool CanJump => (!IsAttacking || IsRecovering) && !IsCharging;
         public bool HasHitPause => hitPause > 0f;
-        public float MovementMultiplier => IsRecovering ? 1f : HasHitPause ? 0f : IsCharging ? 0.1f : IsAttacking ? 0.3f : 1f;
+        public float MovementMultiplier => IsRecovering || IsAirSpin ? 1f : HasHitPause ? 0f : IsCharging ? 0.1f : IsAttacking ? 0.3f : 1f;
         public float AttackProgress => Mathf.Clamp01(elapsed / Mathf.Max(0.01f, windup + activeTime + recovery));
         public bool IsHeavySnap => IsAttacking && IsHeavyAttack && !IsDashAttack && !IsCrossBite && !IsSnapBite && !IsAirLunge && releasedCharge > 0.15f && elapsed >= windup && elapsed < windup + activeTime;
         public float HeavySnapPulse => IsHeavySnap ? Mathf.Sin(Mathf.Clamp01((elapsed - windup) / activeTime) * Mathf.PI) : 0f;
@@ -342,7 +346,8 @@ namespace AshenPaw
 
         private void StartLight(int step)
         {
-            if (!movement.IsGrounded && ReadAimInput().sqrMagnitude < 0.1f)
+            // if (!movement.IsGrounded && ReadAimInput().sqrMagnitude < 0.1f)
+            if (!movement.IsGrounded)
             {
                 if (airSpinUsed) return;
                 airSpinUsed = true;
@@ -357,7 +362,6 @@ namespace AshenPaw
                 IsAirSpin = true;
                 return;
             }
-            if (!movement.IsGrounded) { if (airSpinUsed) return; airSpinUsed = true; }
             ComboStep = step;
             IsHeavyAttack = false;
             IsDashAttack = false;
@@ -622,9 +626,9 @@ namespace AshenPaw
             IsAttacking = true;
             elapsed = queuedLight = hitPause = 0f;
             strikeStarted = false;
-            attackAim = ReadAimInput();
-            if (attackAim.sqrMagnitude < 0.1f) attackAim = Vector2.right * movement.InputFacing();
-            AttackFacing = Mathf.Abs(attackAim.x) > 0.1f ? (attackAim.x > 0f ? 1 : -1) : movement.Facing;
+            // attackAim = ReadAimInput();
+            AttackFacing = movement.InputFacing();
+            attackAim = Vector2.right * AttackFacing;
             hitTargets.Clear();
             PlayerDebug.ReportAttack();
         }
