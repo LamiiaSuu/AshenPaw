@@ -114,7 +114,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 68dc6120909ef05408784adaad49f478, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AshenPaw.PlayerMovement
-  runSpeed: 7
+  runSpeed: 10.5
+  walkSpeed: 6
+  runBuildUpTime: 0.75
+  walkAnimationTime: 0.25
   crouchSpeed: 2.8
   acceleration: 95
   braking: 120
@@ -130,6 +133,7 @@ MonoBehaviour:
   wallJumpSpeed: {x: 13.5, y: 14.5}
   wallJumpLock: 0.14
   dodgeSpeed: 13
+  runningDashBonus: 0.6
   dodgeDuration: 0.3
   dodgeCooldown: 0.4
   invulnerabilityStart: 0.03

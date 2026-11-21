@@ -263,6 +263,7 @@ namespace AshenPaw
                 animator.applyRootMotion = false;
             }
             SetFloat("Speed", Mathf.Abs(body.linearVelocity.x));
+            SetBool("RunReady", movement.UseRunAnimation);
             SetFloat("VerticalSpeed", body.linearVelocity.y);
             SetBool("Grounded", movement.IsGrounded);
             SetBool("Hurt", health != null && health.IsHitFlashing);

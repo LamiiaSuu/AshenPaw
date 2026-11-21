@@ -80,6 +80,9 @@ namespace AshenPaw
             if (!Application.isPlaying) return;
             if (labelStyle == null) labelStyle = new GUIStyle(GUI.skin.label) { fontSize = 16, fontStyle = FontStyle.Bold };
             Color previous = GUI.color;
+            Matrix4x4 previousMatrix = GUI.matrix;
+            float scale = PlayerDebug.ScaleFor(Screen.width, Screen.height);
+            GUI.matrix = previousMatrix * Matrix4x4.Scale(new Vector3(scale, scale, 1f));
             GUI.color = IsHitFlashing ? new Color(1f, 0.35f, 0.3f) : Color.white;
             GUI.Label(new Rect(18f, 12f, 180f, 25f), "HP " + Health + " / " + maxHealth, labelStyle);
             GUI.color = new Color(0.12f, 0.08f, 0.1f, 0.9f);
@@ -87,6 +90,7 @@ namespace AshenPaw
             GUI.color = IsHitFlashing ? Color.white : new Color(0.85f, 0.23f, 0.22f);
             GUI.DrawTexture(new Rect(18f, 40f, 150f * Health / Mathf.Max(1, maxHealth), 8f), Texture2D.whiteTexture);
             GUI.color = previous;
+            GUI.matrix = previousMatrix;
         }
     }
 }

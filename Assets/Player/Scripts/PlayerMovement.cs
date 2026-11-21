@@ -7,7 +7,10 @@ namespace AshenPaw
     public sealed class PlayerMovement : MonoBehaviour
     {
         [Header("Movement")]
-        [SerializeField] private float runSpeed = 7f;
+        [SerializeField] private float runSpeed = 10.5f;
+        [SerializeField] private float walkSpeed = 6f;
+        [SerializeField, Min(0.01f)] private float runBuildUpTime = 0.75f;
+        [SerializeField, Min(0f)] private float walkAnimationTime = 0.25f;
         [SerializeField] private float crouchSpeed = 2.8f;
         [SerializeField] private float acceleration = 95f;
         [SerializeField] private float braking = 120f;
@@ -26,6 +29,7 @@ namespace AshenPaw
         [SerializeField] private float wallJumpLock = 0.14f;
         [Header("Dodge")]
         [SerializeField] private float dodgeSpeed = 13f;
+        [SerializeField, Min(0f)] private float runningDashBonus = 0.6f;
         [SerializeField] private float dodgeDuration = 0.30f;
         [SerializeField] private float dodgeCooldown = 0.4f;
         [SerializeField, Min(0f), InspectorName("i-Frames Start (Sekunden)")] private float invulnerabilityStart = 0.03f;
@@ -42,6 +46,7 @@ namespace AshenPaw
         public float DebugMaxFallSpeed { get => maximumFallSpeed; set => maximumFallSpeed = Mathf.Clamp(value, 5f, 60f); }
         public bool DownHeld => duckHeld;
         public bool IsGrounded { get; private set; }
+        public bool UseRunAnimation => groundRunTime >= walkAnimationTime;
         public bool IsCrouching { get; private set; }
         public bool IsDuckHeld => duckHeld;
         public bool IsDodging { get; private set; }
@@ -67,8 +72,11 @@ namespace AshenPaw
         private float clock;
         private readonly RaycastHit2D[] hits = new RaycastHit2D[12];
         private readonly Collider2D[] overlaps = new Collider2D[12];
+        private float groundRunTime;
+        private int groundRunDirection;
         private float move, lastGrounded = float.NegativeInfinity, jumpQueued = float.NegativeInfinity;
         private float wallLockUntil, dodgeElapsed, dodgeReadyAt;
+        private float dodgeSpeedMultiplier = 1f;
         private int facing = 1, wallDirection, dodgeDirection;
         private bool duckHeld, jumpHeld, jumpReleased, dodgeQueued;
         private bool airDodgeUsed, airDodge;
@@ -167,6 +175,8 @@ namespace AshenPaw
             wallDirection = FindWall();
             if (dodgeQueued && combat != null && !combat.CanDodge) dodgeBufferUntil = clock + 0.16f;
 
+            UpdateRunBuildUp(dt);
+
             if (IsHitStunned)
             {
                 hitStunRemaining = Mathf.Max(0f, hitStunRemaining - dt);
@@ -180,14 +190,18 @@ namespace AshenPaw
             {
                 if (!float.IsNegativeInfinity(jumpQueued)) jumpQueued = clock;
                 dodgeElapsed += dt;
-                float speed = dodgeSpeed * Mathf.Lerp(1.25f, 0.8f, DodgeProgress);
+                float speed = dodgeSpeed * dodgeSpeedMultiplier * Mathf.Lerp(1.25f, 0.8f, DodgeProgress);
                 if (combat != null) speed = combat.LimitDodgeSpeed(speed, dodgeDirection);
                 float vertical = airDodge && !IsGrounded ? 0f : Mathf.Max(body.linearVelocity.y - fallingGravity * dt, -maximumFallSpeed);
                 body.linearVelocity = new Vector2(dodgeDirection * speed, vertical);
                 if (dodgeElapsed >= dodgeDuration)
                 {
                     IsDodging = false;
-                    body.linearVelocity = new Vector2(combat != null && combat.IsDashAttack ? 0f : dodgeDirection * runSpeed, body.linearVelocity.y);
+                    SetHeight((duckHeld && IsGrounded) || !CanStand());
+                    if (combat != null && combat.IsDashAttack)
+                        body.linearVelocity = new Vector2(0f, vertical);
+                    else if (move * dodgeDirection <= 0f)
+                        body.linearVelocity = new Vector2(dodgeDirection * runSpeed, vertical);
                 }
                 if (combat == null || !combat.IsDashAttack) dodgeQueued = false;
                 jumpReleased = false;
@@ -222,10 +236,13 @@ namespace AshenPaw
                 dodgeElapsed = 0f;
                 dodgeReadyAt = clock + dodgeCooldown;
                 dodgeDirection = InputFacing();
+                float forwardSpeed = body.linearVelocity.x * dodgeDirection;
+                float dashRunProgress = runSpeed > walkSpeed ? Mathf.InverseLerp(walkSpeed, runSpeed, forwardSpeed) : 0f;
+                dodgeSpeedMultiplier = 1f + runningDashBonus * dashRunProgress;
                 facing = dodgeDirection;
                 SetHeight(true);
                 if (!HasJump()) jumpQueued = float.NegativeInfinity;
-                body.linearVelocity = new Vector2(dodgeDirection * dodgeSpeed * 1.25f, 0f);
+                body.linearVelocity = new Vector2(dodgeDirection * dodgeSpeed * dodgeSpeedMultiplier * 1.25f, 0f);
                 dodgeQueued = false;
                 return;
             }
@@ -234,7 +251,9 @@ namespace AshenPaw
             Vector2 velocity = body.linearVelocity;
             if (clock >= wallLockUntil)
             {
-                float speed = IsCrouching ? crouchSpeed : runSpeed;
+                float runProgress = Mathf.Clamp01(groundRunTime / runBuildUpTime);
+                float groundSpeed = Mathf.Lerp(Mathf.Min(walkSpeed, runSpeed), runSpeed, runProgress);
+                float speed = IsCrouching ? crouchSpeed : groundSpeed;
                 if (combat != null) speed *= combat.MovementMultiplier;
                 float rate = IsGrounded ? move == 0f ? braking : acceleration : airAcceleration;
                 velocity.x = Mathf.MoveTowards(velocity.x, move * speed, rate * dt);
@@ -273,6 +292,18 @@ namespace AshenPaw
             }
 
             body.linearVelocity = velocity;
+        }
+
+        private void UpdateRunBuildUp(float dt)
+        {
+            int direction = move == 0f || duckHeld || (IsCrouching && !IsDodging) || IsHitStunned
+                ? 0 : move > 0f ? 1 : -1;
+            if (direction != groundRunDirection || direction == 0)
+                groundRunTime = 0f;
+            groundRunDirection = direction;
+
+            if (IsGrounded && !IsDodging && direction != 0)
+                groundRunTime = Mathf.Min(groundRunTime + dt, runBuildUpTime);
         }
 
         private bool HasJump() => clock - jumpQueued <= jumpBuffer;
@@ -352,6 +383,8 @@ namespace AshenPaw
             combat?.ResetAirAction();
             IsDodging = false;
             airDodgeUsed = airDodge = false;
+            groundRunTime = 0f;
+            groundRunDirection = 0;
             jumpQueued = lastGrounded = float.NegativeInfinity;
             wallLockUntil = 0f;
             SetHeight(false);
