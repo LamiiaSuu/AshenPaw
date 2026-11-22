@@ -27,6 +27,10 @@ namespace AshenPaw
         private readonly float[] trailAge = new float[6];
         private int trailIndex;
         private float nextTrail;
+        [SerializeField] private AnimationClip parryStance;
+        [SerializeField] private AnimationClip criticalBite;
+        private SpriteRenderer biteTorso, biteHead, biteJaw;
+        private Sprite biteSource;
         private RuntimeAnimatorController cachedController;
         private readonly Dictionary<int, AnimatorControllerParameterType> parameters = new Dictionary<int, AnimatorControllerParameterType>();
 
@@ -72,6 +76,96 @@ namespace AshenPaw
             if (originalScale == Vector3.zero) originalScale = Vector3.one;
         }
 
+        private void UpdateBiteHead()
+        {
+            Sprite sprite = bodySprite.sprite;
+            bool useHead = combat != null && combat.IsCritical && sprite != null && sprite.name == "Bite_2";
+            if (!useHead)
+            {
+                ShowBiteParts(false);
+                return;
+            }
+
+            if (biteSource != sprite)
+            {
+                ClearBiteParts();
+                biteSource = sprite;
+                // Sprite rectangles use pixels from the bottom left. Split at the neck and under the muzzle.
+                biteTorso = CreateBitePart("Bite torso", sprite, 0, new Vector2[]
+                {
+                    new(0, 0), new(64, 0), new(64, 35), new(0, 35),
+                    new(0, 35), new(51, 35), new(44, 51), new(0, 51),
+                    new(0, 51), new(44, 51), new(44, 64), new(0, 64),
+                });
+                biteHead = CreateBitePart("Bite head", sprite, 1, new Vector2[]
+                {
+                    new(49, 35), new(54, 35), new(54, 44), new(45, 44),
+                    new(45, 44), new(64, 44), new(64, 51), new(42, 51),
+                    new(42, 51), new(64, 51), new(64, 64), new(42, 64),
+                });
+                biteJaw = CreateBitePart("Bite jaw", sprite, 2, new Vector2[]
+                {
+                    new(54, 35), new(64, 35), new(64, 44), new(54, 44),
+                });
+            }
+
+            ShowBiteParts(true);
+            float progress = combat.AttackProgress;
+            float pull = Mathf.SmoothStep(0f, 1f, (progress - 0.30f) / 0.40f);
+            float clench = Mathf.SmoothStep(0f, 1f, (progress - 0.24f) / 0.11f);
+            float release = Mathf.SmoothStep(0f, 1f, (progress - 0.62f) / 0.08f);
+            Quaternion headRotation = Quaternion.Euler(0f, 0f, Mathf.Lerp(-5f, 8f, pull));
+            Vector3 neck = (new Vector2(48f, 43f) - sprite.pivot) / sprite.pixelsPerUnit;
+            Vector3 jaw = (new Vector2(54f, 43f) - sprite.pivot) / sprite.pixelsPerUnit;
+            Vector3 headOffset = neck - headRotation * neck;
+            Quaternion jawRotation = Quaternion.Euler(0f, 0f, -11f * (1f - clench + release));
+            biteHead.transform.SetLocalPositionAndRotation(headOffset, headRotation);
+            biteJaw.transform.SetLocalPositionAndRotation(headOffset + headRotation * (jaw - jawRotation * jaw),
+                headRotation * jawRotation);
+            biteTorso.color = biteHead.color = biteJaw.color = bodySprite.color;
+        }
+
+        private SpriteRenderer CreateBitePart(string name, Sprite source, int order, Vector2[] vertices)
+        {
+            var part = new GameObject(name).AddComponent<SpriteRenderer>();
+            part.transform.SetParent(bodySprite.transform, false);
+            part.sharedMaterial = bodySprite.sharedMaterial;
+            part.sortingLayerID = bodySprite.sortingLayerID;
+            part.sortingOrder = bodySprite.sortingOrder + order;
+            part.sprite = Sprite.Create(source.texture, source.textureRect, source.pivot / source.rect.size,
+                source.pixelsPerUnit, 0, SpriteMeshType.FullRect);
+            var triangles = new ushort[vertices.Length / 4 * 6];
+            for (int vertex = 0, index = 0; vertex < vertices.Length; vertex += 4, index += 6)
+            {
+                triangles[index] = (ushort)vertex;
+                triangles[index + 1] = (ushort)(vertex + 2);
+                triangles[index + 2] = (ushort)(vertex + 1);
+                triangles[index + 3] = (ushort)vertex;
+                triangles[index + 4] = (ushort)(vertex + 3);
+                triangles[index + 5] = (ushort)(vertex + 2);
+            }
+            part.sprite.OverrideGeometry(vertices, triangles);
+            return part;
+        }
+
+        private void ShowBiteParts(bool visible)
+        {
+            if (biteTorso == null) return;
+            if (bodySprite != null) bodySprite.forceRenderingOff = visible;
+            biteTorso.enabled = biteHead.enabled = biteJaw.enabled = visible;
+        }
+
+        private void ClearBiteParts()
+        {
+            ShowBiteParts(false);
+            foreach (var part in new[] { biteTorso, biteHead, biteJaw })
+            {
+                if (part == null) continue;
+                Destroy(part.sprite);
+                Destroy(part.gameObject);
+            }
+        }
+
         private void EnsureTrail(int index)
         {
             if (trail[index] != null || bodySprite == null) return;
@@ -90,7 +184,7 @@ namespace AshenPaw
         {
             if (visuals == null) return;
             bool animated = animator != null && animator.runtimeAnimatorController != null;
-            int visualFacing = combat != null && combat.IsCrossBite ? combat.CrossVisualDirection : combat != null && combat.IsDirectionalAttack ? combat.AttackFacing : movement.Facing;
+            int visualFacing = combat != null && combat.IsCrossBite ? combat.CrossVisualDirection : combat != null && (combat.IsDirectionalAttack || combat.IsParrying || combat.IsCritical) ? combat.AttackFacing : movement.Facing;
             if (animated && combat != null && combat.IsDirectionalAttack && Mathf.Abs(combat.AttackDirection.y) > 0.25f)
             {
                 var clips = combat.AttackDirection.y > 0f ? upwardAttacks : downwardAttacks;
@@ -201,6 +295,38 @@ namespace AshenPaw
                 visuals.localPosition -= Vector3.up * directionalHop;
                 visuals.localPosition += (Vector3)combat.AttackDirection * directionalHop;
             }
+            if (combat != null && (combat.IsParrying || combat.IsCritical || combat.ParryFlashing && !combat.IsAttacking))
+            {
+                bool critical = combat.IsCritical;
+                float progress = critical ? combat.AttackProgress : combat.ParryFlashing ? 0.32f : combat.ParryProgress;
+                AnimationClip clip = critical ? criticalBite : parryStance;
+                if (animated && clip != null)
+                    clip.SampleAnimation(animator.gameObject, progress * clip.length);
+
+                float brace = Mathf.SmoothStep(0f, 1f, progress / 0.12f)
+                    * (1f - Mathf.SmoothStep(0f, 1f, (progress - 0.55f) / 0.45f));
+                if (critical)
+                {
+                    float approach = Mathf.Clamp01((progress - 0.07f) / 0.21f);
+                    float retreat = Mathf.Clamp01((progress - 0.705f) / 0.255f);
+                    float jumpIn = Mathf.Sin(approach * Mathf.PI);
+                    float jumpOut = Mathf.Sin(retreat * Mathf.PI);
+                    float contact = Mathf.SmoothStep(0f, 1f, approach)
+                        * (1f - Mathf.SmoothStep(0f, 1f, retreat));
+                    float x = contact * combat.CriticalLungeDistance;
+                    float y = jumpIn * 0.27f + jumpOut * 0.63f;
+                    visuals.localPosition += new Vector3(visualFacing * x, y, 0f);
+                    visuals.localScale = new Vector3(originalScale.x * visualFacing, originalScale.y, originalScale.z);
+                    rotation = 0f;
+                }
+                else
+                {
+                    visuals.localPosition += Vector3.right * (visualFacing * brace * 0.13f);
+                    visuals.localScale = new Vector3(originalScale.x * visualFacing * (1f + brace * 0.09f),
+                        originalScale.y * (1f - brace * 0.13f), originalScale.z);
+                    rotation = -visualFacing * brace * 5f;
+                }
+            }
             visuals.localRotation = Quaternion.Euler(0f, combat != null ? combat.CrossTurnYaw : 0f, rotation);
             if (aimedAttack && bodySprite != null && bodySprite.sprite != null)
             {
@@ -222,7 +348,9 @@ namespace AshenPaw
         {
             if (bodySprite == null) return;
             bodySprite.color = (movement.IsDodging || combat != null && combat.IsCrossDashing) ? originalColor * new Color(1.15f, 1.25f, 1.4f, 1f) : originalColor;
+            if (combat != null && (combat.ParryFlashing || combat.CriticalFlashing)) bodySprite.color = new Color(1.8f, 1.8f, 1.8f, originalColor.a);
             if (health != null && health.IsHitFlashing) bodySprite.color = new Color(2f, 0.3f, 0.3f, originalColor.a);
+            UpdateBiteHead();
             for (int i = 0; i < trail.Length; i++)
             {
                 EnsureTrail(i);
@@ -244,12 +372,14 @@ namespace AshenPaw
 
         private void OnDisable()
         {
+            ShowBiteParts(false);
             if (bodySprite != null) bodySprite.color = originalColor;
             foreach (var ghost in trail) if (ghost != null) ghost.enabled = false;
         }
 
         private void OnDestroy()
         {
+            ClearBiteParts();
             foreach (var ghost in trail) if (ghost != null) Destroy(ghost.gameObject);
         }
 

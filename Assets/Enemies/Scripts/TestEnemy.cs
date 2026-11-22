@@ -6,12 +6,14 @@ namespace AshenPaw
     [RequireComponent(typeof(Rigidbody2D), typeof(CapsuleCollider2D))]
     public sealed class TestEnemy : MonoBehaviour
     {
-        private enum State { Idle, Chase, Windup, Attack, Recover, Hurt, Dead, Breaking, Reviving, SecondWindup, SecondAttack }
+        private enum State { Idle, Chase, Windup, Attack, Recover, Hurt, Dead, Breaking, Reviving, SecondWindup, SecondAttack, Parried }
         [SerializeField, InspectorName("Hitbox anzeigen")] private bool showHitbox = true;
         [SerializeField] private bool dummyMode = true;
         [SerializeField] private float dummyScale = 1.3f;
         [SerializeField] private float skeletonScale = 1.8f;
         private float Size => dummyMode ? dummyScale : skeletonScale;
+        [SerializeField, Min(0.2f)] private float parryStun = 1.55f;
+        [SerializeField, Min(0f)] private float parryRecoil = 2.8f;
         [SerializeField] private float moveSpeed = 1.5f;
         [SerializeField] private float followRange = 12f;
         [SerializeField] private float attackRange = 1.65f;
@@ -50,6 +52,12 @@ namespace AshenPaw
         private float stateTime, flashTime;
         private int facing = -1;
         private bool hitAttempted;
+        [SerializeField, Min(0f)] private float criticalKnockback = 16f;
+        private float parryStunRemaining;
+        private PlayerCombat criticalOwner;
+        private float criticalRecoilTime;
+        public bool IsParried => !dummyMode && state == State.Parried;
+        public Vector2 Feet => body.position;
 
         private void Awake()
         {
@@ -86,6 +94,8 @@ namespace AshenPaw
 
         public void SetDummyMode(bool enabled)
         {
+            criticalOwner = null;
+            criticalRecoilTime = 0f;
             dummyMode = enabled;
             Health = MaxHealth;
             capsule.enabled = true;
@@ -142,12 +152,25 @@ namespace AshenPaw
                 return;
             }
             if (body.position.y < -10f) { Die(); return; }
+            if (IsParried)
+            {
+                if (criticalOwner != null) { Stop(); return; }
+                parryStunRemaining -= dt;
+                body.linearVelocity = new Vector2(Mathf.MoveTowards(body.linearVelocity.x, 0f, 22f * dt), body.linearVelocity.y);
+                if (parryStunRemaining <= 0f) ChangeState(State.Idle);
+                return;
+            }
             if (target == null) { FindPlayer(); Stop(); return; }
             if (target.GetComponent<PlayerDebug>() is PlayerDebug debug && debug.HiddenFromEnemies) { Stop(); ChangeState(State.Idle); return; }
             if (state == State.Hurt)
             {
-                Stop();
-                if (stateTime >= 0.28f) ChangeState(State.Idle);
+                if (criticalRecoilTime > 0f)
+                {
+                    criticalRecoilTime = Mathf.Max(0f, criticalRecoilTime - dt);
+                    body.linearVelocity = new Vector2(Mathf.MoveTowards(body.linearVelocity.x, 0f, 27f * dt), body.linearVelocity.y);
+                }
+                else Stop();
+                if (stateTime >= 0.28f && criticalRecoilTime <= 0f) ChangeState(State.Idle);
                 return;
             }
             if (state == State.Windup)
@@ -233,12 +256,54 @@ namespace AshenPaw
             {
                 if (hitResults[i].GetComponentInParent<PlayerHealth>() != target) continue;
                 hitAttempted = true;
-                target.TakeDamage(attackDamage, Vector2.right * facing);
+                Vector2 direction = Vector2.right * facing;
+                var combat = target.GetComponent<PlayerCombat>();
+                if (combat == null || !combat.TryParry(this, direction))
+                    target.TakeDamage(attackDamage, direction);
                 break;
             }
         }
 
+        public bool TryStaggerFromParry(float direction)
+        {
+            if (dummyMode || state != State.Attack && state != State.SecondAttack) return false;
+            ChangeState(State.Parried);
+            flashTime = 0.12f;
+            parryStunRemaining = parryStun;
+            body.linearVelocity = new Vector2(direction * parryRecoil, body.linearVelocity.y);
+            return true;
+        }
+
+        public bool LockForCritical(PlayerCombat owner)
+        {
+            if (!IsParried || criticalOwner != null) return false;
+            criticalOwner = owner;
+            Stop();
+            return true;
+        }
+
+        public void ReleaseCritical(PlayerCombat owner)
+        {
+            if (criticalOwner == owner) criticalOwner = null;
+        }
+
+        public bool TakeCritical(PlayerCombat owner, int damage, int direction)
+        {
+            if (!IsParried || criticalOwner != owner) return false;
+            criticalOwner = null;
+            if (!ApplyDamage(damage, true, "CRITICAL")) return false;
+            if (!IsDead)
+            {
+                criticalRecoilTime = 0.56f;
+                body.linearVelocity = new Vector2(direction * criticalKnockback, 3.6f);
+            }
+            return true;
+        }
+
         public bool TakeDamage(int damage, Vector2 direction, bool heavy)
+            => ApplyDamage(damage, heavy && !IsParried, "ENEMY HIT");
+
+        private bool ApplyDamage(int damage, bool heavy, string outcome)
         {
             if (damage <= 0 || state == State.Dead || state == State.Reviving || state == State.Breaking) return false;
             int actualDamage = Mathf.Min(Health, damage);
@@ -251,13 +316,15 @@ namespace AshenPaw
             }
             else if (dummyMode || heavy || state == State.Idle || state == State.Chase || state == State.Hurt)
                 ChangeState(State.Hurt);
-            PlayerDebug.Report(actualDamage, false, capsule.bounds.center + Vector3.up * (capsule.bounds.extents.y + 0.3f), "ENEMY HIT", this);
+            PlayerDebug.Report(actualDamage, false, capsule.bounds.center + Vector3.up * (capsule.bounds.extents.y + 0.3f), outcome, this);
             return true;
         }
 
         private void Die()
         {
             Health = 0;
+            criticalOwner = null;
+            criticalRecoilTime = 0f;
             body.linearVelocity = Vector2.zero;
             body.bodyType = RigidbodyType2D.Kinematic;
             capsule.enabled = false;
@@ -317,6 +384,7 @@ namespace AshenPaw
                         case State.SecondWindup: frames = skeletonAttack; duration = secondWindupDuration; frameStart = 2; frameCount = 2; break;
                         case State.SecondAttack: frames = skeletonAttack; duration = secondAttackDuration; frameStart = 4; frameCount = 1; break;
                         case State.Recover: frames = skeletonRecover; duration = recoveryDuration; break;
+                        case State.Parried: frames = skeletonHit; duration = 0.28f; break;
                         case State.Hurt: frames = skeletonHit; duration = 0.28f; break;
                         case State.Dead:
                         case State.Reviving: frames = skeletonDeath; duration = 1.3f; break;
@@ -332,6 +400,11 @@ namespace AshenPaw
                     spriteRenderer.sprite = frames[index];
                 }
                 Color color = Color.Lerp(Color.white, new Color(4f, 3.6f, 3.6f, 1f), Mathf.Clamp01(flashTime / 0.12f));
+                if (IsParried && criticalOwner == null)
+                {
+                    float pulse = 0.5f + 0.5f * Mathf.Sin(stateTime * 12f);
+                    color *= Color.Lerp(Color.white, new Color(1.45f, 1.18f, 0.80f, 1f), 0.55f + 0.45f * pulse);
+                }
                 spriteRenderer.color = color;
             }
             if (visuals != null)
@@ -350,7 +423,12 @@ namespace AshenPaw
                 healthFill.transform.localPosition = new Vector3(-0.9f + amount * 0.9f, 0f, 0f);
                 healthFill.color = dummyMode ? new Color(0.9f, 0.7f, 0.3f) : new Color(0.9f, 0.3f, 0.3f);
             }
-            if (status != null) status.text = (dummyMode ? "DUMMY " : "SKELETON ") + Health + "/" + MaxHealth;
+            if (status != null)
+            {
+                bool open = IsParried && criticalOwner == null;
+                status.text = (dummyMode ? "DUMMY " : "SKELETON ") + Health + "/" + MaxHealth
+                    + (open ? "  <color=#FFC578>OPEN</color>" : "");
+            }
         }
     }
 }

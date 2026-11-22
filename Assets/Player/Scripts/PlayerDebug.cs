@@ -68,7 +68,7 @@ namespace AshenPaw
             scroll = GUILayout.BeginScrollView(scroll);
             GUILayout.Label("DEBUG  [H]");
             GUILayout.Label(frameSeconds > 0f ? $"FPS  {1f / frameSeconds:0}   |   {frameSeconds * 1000f:0.0} ms" : "FPS  --");
-            GUILayout.Label("Cyan: player | Green: enemies\nYellow/orange: attacks | Red: active");
+            GUILayout.Label("Cyan: player | Magenta: parry window | Green: enemies\nYellow/orange: attacks | Red: active");
             GUILayout.Label("State: " + State);
             GUILayout.Label($"Position: {body.position.x:F2}, {body.position.y:F2}");
             GUILayout.Label($"Velocity: {body.linearVelocity.x:F2}, {body.linearVelocity.y:F2}  |  {body.linearVelocity.magnitude:F2}");
@@ -94,7 +94,8 @@ namespace AshenPaw
             lineCount = 0;
             if (Visible)
             {
-                if (playerCollider != null && playerCollider.enabled) OutlineCollider(playerCollider, Color.cyan);
+                Color playerColor = combat != null && combat.IsParryWindowActive ? Color.magenta : Color.cyan;
+                if (playerCollider != null && playerCollider.enabled) OutlineCollider(playerCollider, playerColor);
                 if (combat != null && combat.IsAttacking)
                 {
                     Bounds box = combat.AttackHitbox;

@@ -258,6 +258,8 @@ namespace AshenPaw
                 float rate = IsGrounded ? move == 0f ? braking : acceleration : airAcceleration;
                 velocity.x = Mathf.MoveTowards(velocity.x, move * speed, rate * dt);
             }
+            if (combat != null && combat.IsCritical)
+                velocity.x = combat.StepCriticalRecoil(dt);
             if (combat != null && combat.DirectionalBurstActive)
             {
                 Vector2 burst = combat.DirectionalBurstVelocity;

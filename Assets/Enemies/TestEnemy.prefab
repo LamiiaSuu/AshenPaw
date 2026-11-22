@@ -492,6 +492,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ad8d4bfa90f50c74b8d467c6e870f2db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AshenPaw.TestEnemy
+  parryStun: 1.55
+  criticalKnockback: 16
   dummyMode: 1
   moveSpeed: 1.5
   followRange: 12

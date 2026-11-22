@@ -57,7 +57,7 @@ namespace AshenPaw
         public float DebugActive => activeTime;
         public float DebugRecovery => recovery;
         public float DebugRemainingAttackTime => Mathf.Max(0f, windup + activeTime + recovery - elapsed) + (!IsHeavyAttack && ComboStep == 2 ? comboCooldown : 0f);
-        public string DebugAttackName => IsAirDive ? "Dive attack" : IsAirLunge ? "Air bite" : IsCrossBite ? "Cross bite" : IsDashAttack ? "Dash strike" : IsSnapBite ? "Snap bite" : IsAirSpin ? "Air spin" : IsHeavyAttack ? "Heavy bite" : "Light " + (ComboStep + 1);
+        public string DebugAttackName => IsCritical ? "Critical bite" : IsAirDive ? "Dive attack" : IsAirLunge ? "Air bite" : IsCrossBite ? "Cross bite" : IsDashAttack ? "Dash strike" : IsSnapBite ? "Snap bite" : IsAirSpin ? "Air spin" : IsHeavyAttack ? "Heavy bite" : "Light " + (ComboStep + 1);
         public string DebugTimingInfo => $"Startup {windup * 1000f:0} ms ({windup * 60f:0.#}f)\nActive {activeTime * 1000f:0} ms ({activeTime * 60f:0.#}f)\nRecovery {recovery * 1000f:0} ms ({recovery * 60f:0.#}f)\nAttack lock {attackCooldownRemaining * 1000f:0} ms\nFrames use a 60 FPS timing reference.";
         public string DebugAttackPhase => IsCharging ? "Charging" : !IsAttacking ? (attackCooldownRemaining > 0f ? "Cooldown" : "Ready") : IsLunging ? "Approach" : elapsed < windup ? "Startup" : elapsed < windup + activeTime ? "Active" : "Recovery";
         public bool IsAttacking { get; private set; }
@@ -86,18 +86,61 @@ namespace AshenPaw
         public int ComboStep { get; private set; }
         public int AttackFacing { get; private set; } = 1;
         public float ChargeAmount => Mathf.Clamp01(chargeTime / fullChargeTime);
-        public bool LocksFacing => IsAttacking && !IsRecovering || IsCharging;
-        public bool CanDodge => !IsAttacking || IsRecovering;
+        public bool LocksFacing => IsParrying || IsAttacking && !IsRecovering || IsCharging;
+        public bool CanDodge => !IsParrying && !IsCritical && (!IsAttacking || IsRecovering);
         public bool IsRecovering => attackCooldownRemaining > 0f || IsAttacking && (!IsDashAttack || !dashStrikeActive) && elapsed >= windup + activeTime;
-        public bool CanJump => (!IsAttacking || IsRecovering) && !IsCharging;
+        public bool CanJump => !IsParrying && !IsCritical && (!IsAttacking || IsRecovering) && !IsCharging;
         public bool HasHitPause => hitPause > 0f;
-        public float MovementMultiplier => IsRecovering || IsAirSpin ? 1f : HasHitPause ? 0f : IsCharging ? 0.1f : IsAttacking ? 0.3f : 1f;
+        public float MovementMultiplier => IsParrying || IsCritical ? 0f : IsRecovering || IsAirSpin ? 1f : HasHitPause ? 0f : IsCharging ? 0.1f : IsAttacking ? 0.3f : 1f;
         public float AttackProgress => Mathf.Clamp01(elapsed / Mathf.Max(0.01f, windup + activeTime + recovery));
         public bool IsHeavySnap => IsAttacking && IsHeavyAttack && !IsDashAttack && !IsCrossBite && !IsSnapBite && !IsAirLunge && releasedCharge > 0.15f && elapsed >= windup && elapsed < windup + activeTime;
         public float HeavySnapPulse => IsHeavySnap ? Mathf.Sin(Mathf.Clamp01((elapsed - windup) / activeTime) * Mathf.PI) : 0f;
         public float HeavySnapSpeed => Mathf.Lerp(2.5f, 5f, releasedCharge) * HeavySnapPulse;
         public float HeavySnapLift => Mathf.Lerp(0.04f, 0.12f, releasedCharge) * HeavySnapPulse;
         public bool CanInterruptEnemy => IsHeavyAttack && releasedCharge >= 0.8f;
+
+        [Header("Parry")]
+        [SerializeField, Min(0f)] private float parryStartup = 0.055f;
+        [SerializeField, Min(0.01f)] private float parryWindow = 0.115f;
+        [SerializeField, Min(0f)] private float parryRecovery = 0.24f;
+        [SerializeField, Min(0.1f)] private float criticalRange = 1.55f;
+        [SerializeField, Min(1)] private int criticalDamage = 50;
+        private float parryTime;
+        private float parryFlashUntil;
+        private TestEnemy criticalTarget;
+        private bool criticalHit;
+        private float criticalFlashUntil;
+        [SerializeField, Min(0f)] private float criticalPlayerRecoil = 1.8f;
+        private float criticalRecoilElapsed;
+        private bool criticalRecoilActive;
+
+        public float StepCriticalRecoil(float dt)
+        {
+            if (!criticalRecoilActive) return 0f;
+            const float duration = 0.24f;
+            float from = criticalRecoilElapsed / duration;
+            criticalRecoilElapsed = Mathf.Min(duration, criticalRecoilElapsed + dt);
+            float to = criticalRecoilElapsed / duration;
+            if (criticalRecoilElapsed >= duration) criticalRecoilActive = false;
+            float distance = criticalPlayerRecoil * (Mathf.SmoothStep(0f, 1f, to) - Mathf.SmoothStep(0f, 1f, from));
+            return -AttackFacing * distance / dt;
+        }
+        public bool CriticalFlashing => IsCritical && Time.unscaledTime < criticalFlashUntil;
+        public float CriticalLungeDistance { get; private set; }
+
+        public bool TryGetCriticalFocus(out Vector2 point)
+        {
+            point = default;
+            if (!IsCritical || criticalHit || criticalTarget == null || !criticalTarget.IsParried) return false;
+            point = criticalTarget.Feet + Vector2.up * 1.12f;
+            return true;
+        }
+        public bool IsParrying => parryTime > 0f;
+        public bool IsParryWindowActive => parryTime > parryRecovery && parryTime <= parryRecovery + parryWindow
+            && movement != null && movement.IsGrounded && !movement.IsHitStunned;
+        public bool IsCritical { get; private set; }
+        public bool ParryFlashing => Time.time < parryFlashUntil;
+        public float ParryProgress => 1f - parryTime / Mathf.Max(0.01f, parryStartup + parryWindow + parryRecovery);
 
         private PlayerMovement movement;
         private Rigidbody2D body;
@@ -150,6 +193,9 @@ namespace AshenPaw
             if (GetComponent<PlayerDebug>() is PlayerDebug debug && debug.PointerOverMenu) { CancelAttack(); heavyHeld = false; Tick(Time.deltaTime); return; }
             var mouse = Mouse.current;
             var pad = Gamepad.current;
+            var keyboard = Keyboard.current;
+            if (keyboard != null && keyboard.eKey.wasPressedThisFrame || pad != null && pad.rightShoulder.wasPressedThisFrame)
+                TryStartParry();
             if (mouse != null && mouse.leftButton.wasPressedThisFrame || pad != null && pad.buttonWest.wasPressedThisFrame)
                 QueueLightAttack();
             SetHeavyHeld(mouse != null && mouse.rightButton.isPressed || pad != null && pad.buttonNorth.isPressed);
@@ -172,13 +218,17 @@ namespace AshenPaw
                 }
                 return;
             }
-            if (!IsAttacking) StartLight(0);
+            if (IsParrying || IsCritical) return;
+            if (!IsAttacking)
+            {
+                if (!TryStartCritical()) StartLight(0);
+            }
             else queuedLight = 0.28f;
         }
 
         public void SetHeavyHeld(bool held)
         {
-            if (movement.HasBufferedDodge) { heavyHeld = held; return; }
+            if (IsParrying || IsCritical || movement.HasBufferedDodge) { heavyHeld = held; return; }
             if (movement.IsHitStunned) { heavyHeld = held; return; }
             if (held && !heavyHeld && !movement.IsGrounded && !movement.IsDodging && !IsAttacking && attackCooldownRemaining <= 0f)
             {
@@ -232,6 +282,29 @@ namespace AshenPaw
         {
             if (movement.IsHitStunned) { CancelAttack(); return; }
             attackCooldownRemaining = Mathf.Max(0f, attackCooldownRemaining - dt);
+            if (IsParrying)
+            {
+                parryTime = Mathf.Max(0f, parryTime - dt);
+                return;
+            }
+            if (IsCritical)
+            {
+                elapsed += dt;
+                if (!criticalHit && elapsed >= windup)
+                {
+                    criticalHit = true;
+                    if (criticalTarget != null && criticalTarget.TakeCritical(this, criticalDamage, AttackFacing))
+                    {
+                        elapsed = windup;
+                        criticalRecoilElapsed = 0f;
+                        criticalRecoilActive = true;
+                        criticalFlashUntil = Time.unscaledTime + 0.065f;
+                        CameraFeel.CriticalHit(criticalTarget.Feet + Vector2.up * 0.8f, AttackFacing);
+                    }
+                }
+                if (elapsed >= windup + activeTime + recovery) CancelAttack();
+                return;
+            }
             if (crossBiteQueued && heavyHeld) crossHoldTime += dt;
             if (movement.IsDodging && crossFromDodge && crossBiteQueued && heavyHeld && crossHoldTime >= crossHoldThreshold)
             {
@@ -342,6 +415,72 @@ namespace AshenPaw
                 if (nextHeavy) heavyQueued = true;
                 else if (nextLight && attackCooldownRemaining <= 0f) StartLight(0);
             }
+        }
+
+        public bool TryStartParry()
+        {
+            if (movement == null || !movement.IsGrounded || movement.IsDodging || movement.HasBufferedDodge
+                || movement.IsHitStunned || IsParrying || IsCharging || IsAttacking) return false;
+            AttackFacing = movement.InputFacing();
+            parryTime = parryStartup + parryWindow + parryRecovery;
+            return true;
+        }
+
+        public bool TryParry(TestEnemy enemy, Vector2 strikeDirection)
+        {
+            if (!IsParryWindowActive || strikeDirection.x * AttackFacing >= 0f)
+                return false;
+            if (!enemy.TryStaggerFromParry(-strikeDirection.x)) return false;
+            parryTime = 0f;
+            parryFlashUntil = Time.time + 0.16f;
+            PlayerDebug.Report(0, true, body.position + Vector2.up * 1.6f, "PARRY");
+            return true;
+        }
+
+        private bool TryStartCritical()
+        {
+            if (!movement.IsGrounded) return false;
+            var filter = new ContactFilter2D { useTriggers = false, useLayerMask = true, layerMask = enemyLayers };
+            int count = physics.OverlapBox(body.position + Vector2.up, new Vector2(criticalRange * 2f, 2f), 0f, filter, targets);
+            TestEnemy closest = null;
+            float distance = float.PositiveInfinity;
+            for (int i = 0; i < count; i++)
+            {
+                var enemy = targets[i].GetComponentInParent<TestEnemy>();
+                if (!CanReachCritical(enemy)) continue;
+                float next = Mathf.Abs(enemy.Feet.x - body.position.x);
+                if (next >= distance) continue;
+                closest = enemy;
+                distance = next;
+            }
+            if (closest == null) return false;
+
+            const float criticalWindup = 0.86f;
+            if (!closest.LockForCritical(this)) return false;
+            body.linearVelocity = new Vector2(0f, body.linearVelocity.y);
+            IsHeavyAttack = true;
+            ComboStep = 0;
+            releasedCharge = 0f;
+            damage = criticalDamage;
+            windup = criticalWindup;
+            activeTime = 0.10f;
+            recovery = 0.26f;
+            BeginAttack();
+            AttackFacing = closest.Feet.x < body.position.x ? -1 : 1;
+            IsCritical = true;
+            criticalTarget = closest;
+            criticalHit = false;
+            criticalFlashUntil = 0f;
+            CriticalLungeDistance = Mathf.Clamp(distance - 0.38f, 0.18f, 1.17f);
+            return true;
+        }
+
+        private bool CanReachCritical(TestEnemy enemy)
+        {
+            if (enemy == null || !enemy.IsParried) return false;
+            Vector2 delta = enemy.Feet - body.position;
+            return Mathf.Abs(delta.x) <= criticalRange && Mathf.Abs(delta.y) <= 0.65f
+                && !TerrainBlocks(body.position + Vector2.up * 0.75f, delta);
         }
 
         private void StartLight(int step)
@@ -678,6 +817,11 @@ namespace AshenPaw
 
         public void CancelAttack()
         {
+            parryTime = 0f;
+            IsCritical = false;
+            criticalRecoilActive = false;
+            if (criticalTarget != null) criticalTarget.ReleaseCritical(this);
+            criticalTarget = null;
             if (IsCharging) heavyNeedsRelease = true;
             IsAirSpin = IsAirLunge = IsLunging = IsAirDive = airFreeDash = false;
             airTarget = null;

@@ -173,6 +173,8 @@ MonoBehaviour:
   animator: {fileID: 5284853387427806145}
   placeholderMotion: 1
   feetPivot: 1
+  parryStance: {fileID: 7400000, guid: 87150218993340a28114a1ffdbb3d6d8, type: 2}
+  criticalBite: {fileID: 7400000, guid: 87e05facd5e1485fa3eade763f688b60, type: 2}
   upwardAttacks:
   - {fileID: 7400000, guid: d48db285e5f380248880383e252a28a2, type: 2}
   - {fileID: 7400000, guid: 240d9e1c0f76d6141a646f04fa89a137, type: 2}
