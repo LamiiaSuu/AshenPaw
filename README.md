@@ -11,8 +11,12 @@ Im Mittelpunkt stehen präzises Movement, Nahkampf und Bosskämpfe. Geplant ist 
 | Bewegen | A / D oder Pfeiltasten | Linker Stick / Steuerkreuz |
 | Springen / Walljump | Leertaste | A |
 | Ducken | S / Pfeil runter / linke Strg | Stick / Steuerkreuz runter |
+| Kamera hoch | W / Pfeil hoch halten | Linken Stick / Steuerkreuz hoch halten |
+| Kamera runter | Geduckt bleiben | Geduckt bleiben |
 | Dash | Linke Shift / K | B |
 | Light Attack / Combo | Linksklick, für die Combo erneut klicken | X, für die Combo erneut drücken |
+| Parieren | E | RB |
+| Konterbiss / Visceral Attack | Linksklick nah am parierten Gegner | X nah am parierten Gegner |
 | Heavy aufladen | Rechtsklick halten | Y halten |
 | Schnappbiss nach Light Attack | Rechtsklick kurz tippen | Y kurz tippen |
 | Biss mit Seitenwechsel nach Light Attack | Rechtsklick halten | Y halten |
