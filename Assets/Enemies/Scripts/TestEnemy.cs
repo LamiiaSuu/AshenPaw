@@ -6,7 +6,11 @@ namespace AshenPaw
     [RequireComponent(typeof(Rigidbody2D), typeof(CapsuleCollider2D))]
     public sealed class TestEnemy : MonoBehaviour
     {
-        private enum State { Idle, Chase, Windup, Attack, Recover, Hurt, Dead, Breaking, Reviving, SecondWindup, SecondAttack, Parried }
+        private enum State
+        {
+            Idle, Chase, Windup, Attack, SecondWindup, SecondAttack,
+            LungeWindup, LungeStep, LungeAttack, Recover, Hurt, Dead, Breaking, Reviving, Parried
+        }
         [SerializeField, InspectorName("Hitbox anzeigen")] private bool showHitbox = true;
         [SerializeField] private bool dummyMode = true;
         [SerializeField] private float dummyScale = 1.3f;
@@ -16,17 +20,27 @@ namespace AshenPaw
         [SerializeField, Min(0f)] private float parryRecoil = 2.8f;
         [SerializeField] private float moveSpeed = 1.5f;
         [SerializeField] private float followRange = 12f;
-        [SerializeField] private float attackRange = 1.65f;
+        [SerializeField] private float attackRange = 1.4f;
         [SerializeField] private float windupDuration = 0.7f;
         [SerializeField] private float attackDuration = 0.22f;
         [SerializeField] private float recoveryDuration = 0.65f;
         [SerializeField] private int attackDamage = 15;
         [SerializeField] private float secondWindupDuration = 0.34f;
         [SerializeField] private float secondAttackDuration = 0.18f;
+        [SerializeField, Min(0f)] private float lungeRange = 2.35f;
+        [SerializeField, Min(0.02f)] private float lungeWindupDuration = 0.76f;
+        [SerializeField, Min(0.02f)] private float lungeStepDuration = 0.22f;
+        [SerializeField, Min(0f)] private float lungeSpeed = 8.5f;
+        [SerializeField, Min(0.02f)] private float lungeAttackDuration = 0.20f;
+        [SerializeField, Min(1)] private int lungeDamage = 22;
+        [SerializeField, Min(0f)] private float lungeRecoveryDuration = 0.82f;
+        [SerializeField, Min(0f)] private float missRecoveryExtra = 0.30f;
+        [SerializeField, Min(0f)] private float interruptRecoveryDuration = 0.44f;
         [SerializeField] private LayerMask terrainLayers = ~((1 << 8) | (1 << 9));
         [SerializeField] private Transform visuals;
         [SerializeField] private SpriteRenderer spriteRenderer;
         [SerializeField] private Sprite[] skeletonIdle, skeletonWalk, skeletonWindup, skeletonAttack, skeletonRecover, skeletonHit, skeletonDeath;
+        [SerializeField] private Sprite[] skeletonLungeWindup;
         [SerializeField] private Sprite[] dummyIdle, dummyHit, dummyBreak;
         [SerializeField] private SpriteRenderer healthFill;
         [SerializeField] private Transform healthBar;
@@ -52,6 +66,9 @@ namespace AshenPaw
         private float stateTime, flashTime;
         private int facing = -1;
         private bool hitAttempted;
+        private bool attackLanded;
+        private bool lungeSelected;
+        private float hurtDuration;
         [SerializeField, Min(0f)] private float criticalKnockback = 16f;
         private float parryStunRemaining;
         private PlayerCombat criticalOwner;
@@ -114,9 +131,13 @@ namespace AshenPaw
 
         private void FixedUpdate() => Tick(Time.fixedDeltaTime);
 
-        public float DebugHitStunRemaining => state == State.Hurt ? Mathf.Max(0f, (dummyMode ? 0.58f : 0.28f) - stateTime) : 0f;
-        public bool DebugIsAttacking => state == State.Windup || state == State.Attack || state == State.SecondWindup || state == State.SecondAttack || state == State.Recover;
-        public bool DebugAttackActive => state == State.Attack || state == State.SecondAttack;
+        private bool IsWindingUp => state is State.Windup or State.SecondWindup or State.LungeWindup or State.LungeStep;
+        private bool IsSwinging => state is State.Attack or State.SecondAttack or State.LungeAttack;
+        private float AttackRecoveryDuration => lungeSelected ? lungeRecoveryDuration : recoveryDuration;
+
+        public float DebugHitStunRemaining => state == State.Hurt ? Mathf.Max(0f, hurtDuration - stateTime) : 0f;
+        public bool DebugIsAttacking => IsWindingUp || IsSwinging;
+        public bool DebugAttackActive => IsSwinging;
         public string DebugInfo => (dummyMode ? "Dummy" : "Skeleton") + "  " + Health + "/" + MaxHealth + " HP  |  " + state;
 
         private void Tick(float dt)
@@ -127,7 +148,7 @@ namespace AshenPaw
             {
                 body.linearVelocity = Vector2.zero;
                 if (state == State.Breaking && stateTime >= 0.9f) { Health = MaxHealth; ChangeState(State.Idle); }
-                else if (state == State.Hurt && stateTime >= 0.58f) ChangeState(State.Idle);
+                else if (state == State.Hurt && stateTime >= hurtDuration) ChangeState(State.Idle);
                 return;
             }
             if (state == State.Dead)
@@ -170,7 +191,7 @@ namespace AshenPaw
                     body.linearVelocity = new Vector2(Mathf.MoveTowards(body.linearVelocity.x, 0f, 27f * dt), body.linearVelocity.y);
                 }
                 else Stop();
-                if (stateTime >= 0.28f && criticalRecoilTime <= 0f) ChangeState(State.Idle);
+                if (stateTime >= hurtDuration && criticalRecoilTime <= 0f) ChangeState(State.Idle);
                 return;
             }
             if (state == State.Windup)
@@ -183,7 +204,7 @@ namespace AshenPaw
             {
                 Stop();
                 TryHitPlayer();
-                if (stateTime >= attackDuration) ChangeState(State.SecondWindup);
+                if (state == State.Attack && stateTime >= attackDuration) ChangeState(State.SecondWindup);
                 return;
             }
             if (state == State.SecondWindup)
@@ -196,27 +217,54 @@ namespace AshenPaw
             {
                 Stop();
                 TryHitPlayer();
-                if (stateTime >= secondAttackDuration) ChangeState(State.Recover);
+                if (state == State.SecondAttack && stateTime >= secondAttackDuration) ChangeState(State.Recover);
+                return;
+            }
+            if (state == State.LungeWindup)
+            {
+                Stop();
+                if (stateTime >= lungeWindupDuration) ChangeState(State.LungeStep);
+                return;
+            }
+            if (state == State.LungeStep)
+            {
+                if (SafeStep(facing))
+                    body.linearVelocity = new Vector2(facing * lungeSpeed, body.linearVelocity.y);
+                else Stop();
+
+                if (stateTime >= lungeStepDuration) ChangeState(State.LungeAttack);
+                return;
+            }
+            if (state == State.LungeAttack)
+            {
+                Stop();
+                TryHitPlayer();
+                if (state == State.LungeAttack && stateTime >= lungeAttackDuration) ChangeState(State.Recover);
                 return;
             }
             if (state == State.Recover)
             {
                 Stop();
-                if (stateTime >= recoveryDuration) ChangeState(State.Idle);
+                float duration = AttackRecoveryDuration + (attackLanded ? 0f : missRecoveryExtra);
+                if (stateTime >= duration) ChangeState(State.Idle);
                 return;
             }
 
             Vector2 targetPosition = targetBody != null ? targetBody.position : (Vector2)target.transform.position;
             Vector2 difference = targetPosition - body.position;
             if (difference.sqrMagnitude > followRange * followRange) { Stop(); ChangeState(State.Idle); return; }
-            if (Mathf.Abs(difference.x) > 0.05f) facing = difference.x > 0f ? 1 : -1;
-            if (Mathf.Abs(difference.x) <= attackRange * Size && Mathf.Abs(difference.y) < 1.3f * Size && ClearSight())
+            float horizontalDistance = Mathf.Abs(difference.x);
+            if (horizontalDistance > 0.05f) facing = difference.x > 0f ? 1 : -1;
+            if (horizontalDistance <= Mathf.Max(attackRange, lungeRange) * Size &&
+                Mathf.Abs(difference.y) < 1.3f * Size && ClearSight())
             {
                 Stop();
-                ChangeState(State.Windup);
+                attackLanded = false;
+                lungeSelected = horizontalDistance > attackRange * Size;
+                ChangeState(lungeSelected ? State.LungeWindup : State.Windup);
                 return;
             }
-            if (Mathf.Abs(difference.x) <= 0.65f || !SafeStep(facing))
+            if (horizontalDistance <= 0.65f || !SafeStep(facing))
             {
                 Stop();
                 ChangeState(State.Idle);
@@ -258,15 +306,16 @@ namespace AshenPaw
                 hitAttempted = true;
                 Vector2 direction = Vector2.right * facing;
                 var combat = target.GetComponent<PlayerCombat>();
-                if (combat == null || !combat.TryParry(this, direction))
-                    target.TakeDamage(attackDamage, direction);
+                if (combat != null && combat.TryParry(this, direction)) break;
+                int damage = state == State.LungeAttack ? lungeDamage : attackDamage;
+                if (target.TakeDamage(damage, direction)) attackLanded = true;
                 break;
             }
         }
 
         public bool TryStaggerFromParry(float direction)
         {
-            if (dummyMode || state != State.Attack && state != State.SecondAttack) return false;
+            if (dummyMode || !IsSwinging) return false;
             ChangeState(State.Parried);
             flashTime = 0.12f;
             parryStunRemaining = parryStun;
@@ -315,7 +364,13 @@ namespace AshenPaw
                 else Die();
             }
             else if (dummyMode || heavy || state == State.Idle || state == State.Chase || state == State.Hurt)
+            {
+                bool interrupted = heavy && (IsWindingUp || IsSwinging);
+                float duration = dummyMode ? 0.58f : interrupted ? interruptRecoveryDuration : 0.28f;
+                hurtDuration = Mathf.Max(duration, DebugHitStunRemaining);
+                if (interrupted) Stop();
                 ChangeState(State.Hurt);
+            }
             PlayerDebug.Report(actualDamage, false, capsule.bounds.center + Vector3.up * (capsule.bounds.extents.y + 0.3f), outcome, this);
             return true;
         }
@@ -345,17 +400,17 @@ namespace AshenPaw
         {
             get
             {
-                Vector2 feet = Application.isPlaying && body != null ? body.position : (Vector2)transform.position;
-                return new Bounds(feet + new Vector2(facing * 1.05f, 0.8f) * Size, new Vector3(1.6f, 1.25f, 0f) * Size);
+                Vector2 feet = body != null ? body.position : (Vector2)transform.position;
+                return new Bounds(feet + new Vector2(facing * 0.74f, 0.8f) * Size, new Vector3(1.18f, 1.1f, 0f) * Size);
             }
         }
 
         private void OnDrawGizmos()
         {
             if (!showHitbox) return;
-            if (dummyMode) return;
+            if (dummyMode || Application.isPlaying && !DebugIsAttacking) return;
             Bounds box = AttackHitbox;
-            Gizmos.color = state == State.Attack || state == State.SecondAttack ? Color.red : new Color(1f, 0.65f, 0.15f);
+            Gizmos.color = IsSwinging ? Color.red : new Color(1f, 0.65f, 0.15f);
             Gizmos.DrawWireCube(box.center, box.size);
         }
         private void LateUpdate() => UpdatePresentation();
@@ -371,7 +426,7 @@ namespace AshenPaw
                 if (dummyMode)
                 {
                     frames = state == State.Breaking ? dummyBreak : state == State.Hurt ? dummyHit : dummyIdle;
-                    duration = state == State.Breaking ? 0.9f : 0.58f;
+                    duration = state == State.Breaking ? 0.9f : state == State.Hurt ? hurtDuration : 0.58f;
                     loop = state == State.Idle;
                 }
                 else
@@ -383,9 +438,12 @@ namespace AshenPaw
                         case State.Attack: frames = skeletonAttack; duration = attackDuration; frameCount = 2; break;
                         case State.SecondWindup: frames = skeletonAttack; duration = secondWindupDuration; frameStart = 2; frameCount = 2; break;
                         case State.SecondAttack: frames = skeletonAttack; duration = secondAttackDuration; frameStart = 4; frameCount = 1; break;
-                        case State.Recover: frames = skeletonRecover; duration = recoveryDuration; break;
+                        case State.LungeWindup: frames = skeletonLungeWindup; duration = lungeWindupDuration; break;
+                        case State.LungeStep: frames = skeletonLungeWindup; duration = lungeStepDuration; frameStart = Mathf.Max(0, (frames?.Length ?? 0) - 1); frameCount = 1; break;
+                        case State.LungeAttack: frames = skeletonAttack; duration = lungeAttackDuration; frameStart = 4; frameCount = 1; break;
+                        case State.Recover: frames = skeletonRecover; duration = AttackRecoveryDuration; break;
                         case State.Parried: frames = skeletonHit; duration = 0.28f; break;
-                        case State.Hurt: frames = skeletonHit; duration = 0.28f; break;
+                        case State.Hurt: frames = skeletonHit; duration = hurtDuration; break;
                         case State.Dead:
                         case State.Reviving: frames = skeletonDeath; duration = 1.3f; break;
                         default: frames = skeletonIdle; duration = 0.6f; loop = true; break;
@@ -393,6 +451,7 @@ namespace AshenPaw
                 }
                 if (frames != null && frames.Length > 0)
                 {
+                    frameStart = Mathf.Min(frameStart, frames.Length - 1);
                     int count = frameCount > 0 ? Mathf.Min(frameCount, frames.Length - frameStart) : frames.Length;
                     int index = Mathf.FloorToInt(stateTime / Mathf.Max(0.01f, duration) * count);
                     index = frameStart + (loop ? index % count : Mathf.Min(index, count - 1));

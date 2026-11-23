@@ -497,10 +497,19 @@ MonoBehaviour:
   dummyMode: 1
   moveSpeed: 1.5
   followRange: 12
-  attackRange: 1.65
+  attackRange: 1.4
   windupDuration: 0.7
   attackDuration: 0.22
   recoveryDuration: 0.65
+  lungeRange: 2.35
+  lungeWindupDuration: 0.76
+  lungeStepDuration: 0.22
+  lungeSpeed: 8.5
+  lungeAttackDuration: 0.2
+  lungeDamage: 22
+  lungeRecoveryDuration: 0.82
+  missRecoveryExtra: 0.3
+  interruptRecoveryDuration: 0.44
   terrainLayers:
     serializedVersion: 2
     m_Bits: 4294966527
@@ -535,6 +544,11 @@ MonoBehaviour:
   - {fileID: -4339608285410639412, guid: fcced9def5143a64f8d8c008868a83da, type: 3}
   - {fileID: 3703070749356548462, guid: fcced9def5143a64f8d8c008868a83da, type: 3}
   - {fileID: -2528060683071826316, guid: fcced9def5143a64f8d8c008868a83da, type: 3}
+  skeletonLungeWindup:
+  - {fileID: -9192815492500660022, guid: fcced9def5143a64f8d8c008868a83da, type: 3}
+  - {fileID: -4098942091326826159, guid: fcced9def5143a64f8d8c008868a83da, type: 3}
+  - {fileID: -4339608285410639412, guid: fcced9def5143a64f8d8c008868a83da, type: 3}
+  - {fileID: 3703070749356548462, guid: fcced9def5143a64f8d8c008868a83da, type: 3}
   skeletonRecover:
   - {fileID: -2822153170803556287, guid: fcced9def5143a64f8d8c008868a83da, type: 3}
   - {fileID: -4098942091326826159, guid: fcced9def5143a64f8d8c008868a83da, type: 3}
