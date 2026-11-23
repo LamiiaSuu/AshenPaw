@@ -68,6 +68,8 @@ namespace AshenPaw
         private bool hitAttempted;
         private bool attackLanded;
         private bool lungeSelected;
+        private float? plannedAttackDistance;
+        private bool followUpSelected;
         private float hurtDuration;
         [SerializeField, Min(0f)] private float criticalKnockback = 16f;
         private float parryStunRemaining;
@@ -114,6 +116,7 @@ namespace AshenPaw
             criticalOwner = null;
             criticalRecoilTime = 0f;
             dummyMode = enabled;
+            plannedAttackDistance = null;
             Health = MaxHealth;
             capsule.enabled = true;
             capsule.size = new Vector2(0.8f, 1.5f) * Size;
@@ -204,7 +207,7 @@ namespace AshenPaw
             {
                 Stop();
                 TryHitPlayer();
-                if (state == State.Attack && stateTime >= attackDuration) ChangeState(State.SecondWindup);
+                if (state == State.Attack && stateTime >= attackDuration) ChangeState(followUpSelected ? State.SecondWindup : State.Recover);
                 return;
             }
             if (state == State.SecondWindup)
@@ -252,17 +255,35 @@ namespace AshenPaw
 
             Vector2 targetPosition = targetBody != null ? targetBody.position : (Vector2)target.transform.position;
             Vector2 difference = targetPosition - body.position;
-            if (difference.sqrMagnitude > followRange * followRange) { Stop(); ChangeState(State.Idle); return; }
+            if (difference.sqrMagnitude > followRange * followRange)
+            {
+                plannedAttackDistance = null;
+                Stop();
+                ChangeState(State.Idle);
+                return;
+            }
             float horizontalDistance = Mathf.Abs(difference.x);
             if (horizontalDistance > 0.05f) facing = difference.x > 0f ? 1 : -1;
             if (horizontalDistance <= Mathf.Max(attackRange, lungeRange) * Size &&
                 Mathf.Abs(difference.y) < 1.3f * Size && ClearSight())
             {
-                Stop();
-                attackLanded = false;
-                lungeSelected = horizontalDistance > attackRange * Size;
-                ChangeState(lungeSelected ? State.LungeWindup : State.Windup);
-                return;
+                if (!plannedAttackDistance.HasValue)
+                {
+                    lungeSelected = horizontalDistance >= 1.2f * Size && Random.value < 0.45f;
+                    float startRange = lungeSelected && Random.value < 0.5f ? lungeRange : attackRange;
+                    if (lungeSelected) startRange = Mathf.Min(startRange, lungeRange);
+                    plannedAttackDistance = startRange * Size;
+                }
+                if (horizontalDistance <= plannedAttackDistance.Value)
+                {
+                    Stop();
+                    attackLanded = false;
+                    plannedAttackDistance = null;
+                    lungeSelected &= horizontalDistance >= 1.2f * Size;
+                    followUpSelected = !lungeSelected && Random.value < 0.7f;
+                    ChangeState(lungeSelected ? State.LungeWindup : State.Windup);
+                    return;
+                }
             }
             if (horizontalDistance <= 0.65f || !SafeStep(facing))
             {
@@ -307,8 +328,8 @@ namespace AshenPaw
                 Vector2 direction = Vector2.right * facing;
                 var combat = target.GetComponent<PlayerCombat>();
                 if (combat != null && combat.TryParry(this, direction)) break;
-                int damage = state == State.LungeAttack ? lungeDamage : attackDamage;
-                if (target.TakeDamage(damage, direction)) attackLanded = true;
+                bool heavy = state == State.LungeAttack;
+                if (target.TakeDamage(heavy ? lungeDamage : attackDamage, direction, heavy)) attackLanded = true;
                 break;
             }
         }
@@ -389,6 +410,7 @@ namespace AshenPaw
         private void ChangeState(State next)
         {
             if (state == next && stateTime > 0f && (next == State.Idle || next == State.Chase)) return;
+            if (next == State.Hurt || next == State.Dead) plannedAttackDistance = null;
             state = next;
             stateTime = 0f;
             hitAttempted = false;

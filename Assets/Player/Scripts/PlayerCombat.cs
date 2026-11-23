@@ -433,6 +433,7 @@ namespace AshenPaw
             if (!enemy.TryStaggerFromParry(-strikeDirection.x)) return false;
             parryTime = 0f;
             parryFlashUntil = Time.time + 0.16f;
+            GetComponent<PlayerVisuals>()?.PlayParry(body.position, AttackFacing);
             PlayerDebug.Report(0, true, body.position + Vector2.up * 1.6f, "PARRY");
             return true;
         }

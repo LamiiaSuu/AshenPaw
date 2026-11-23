@@ -75,9 +75,12 @@ namespace AshenPaw
 
         private void Impact(bool hurt, bool heavy)
         {
-            float amount = hurt ? 1f : heavy ? 0.8f : 0.45f;
-            float duration = hurt ? hurtFreeze : hitFreeze * (heavy ? 1.3f : 1f);
-            ApplyImpact(amount, duration);
+            if (hurt)
+            {
+                ApplyImpact(heavy ? 1.4f : 1f, hurtFreeze * (heavy ? 1.5f : 1f));
+                return;
+            }
+            ApplyImpact(heavy ? 0.8f : 0.45f, hitFreeze * (heavy ? 1.3f : 1f));
         }
 
         private void ApplyImpact(float shakeAmount, float duration)

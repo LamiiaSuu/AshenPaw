@@ -4,6 +4,7 @@ Shader "Ashen Paw/Wolf Sprite"
     {
         [PerRendererData] _MainTex ("Sprite Texture", 2D) = "white" {}
         _Color ("Tint", Color) = (1,1,1,1)
+        [PerRendererData] _FlashColor ("Flash Tint", Color) = (1,1,1,0)
         _WhiteCutoff ("White Background Cutoff", Range(0,1)) = 0.3
     }
     SubShader
@@ -21,6 +22,7 @@ Shader "Ashen Paw/Wolf Sprite"
             #include "UnityCG.cginc"
             sampler2D _MainTex;
             fixed4 _Color;
+            fixed4 _FlashColor;
             half _WhiteCutoff;
             struct appdata { float4 vertex : POSITION; float2 uv : TEXCOORD0; fixed4 color : COLOR; };
             struct v2f { float4 vertex : SV_POSITION; float2 uv : TEXCOORD0; fixed4 color : COLOR; };
@@ -38,7 +40,9 @@ Shader "Ashen Paw/Wolf Sprite"
                 half low = min(pixel.r, min(pixel.g, pixel.b));
                 half high = max(pixel.r, max(pixel.g, pixel.b));
                 clip(max(_WhiteCutoff - low, high - low - 0.12));
-                return pixel * input.color;
+                fixed4 color = pixel * input.color;
+                color.rgb = lerp(color.rgb, _FlashColor.rgb, _FlashColor.a);
+                return color;
             }
             ENDCG
         }

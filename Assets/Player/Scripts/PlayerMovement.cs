@@ -39,6 +39,11 @@ namespace AshenPaw
         [SerializeField] private float standingHeight = 1.6f;
         [SerializeField] private float crouchingHeight = 0.9f;
         [SerializeField] private LayerMask groundLayers = ~0;
+        [Header("Hit Reaction")]
+        [SerializeField, Min(0f)] private float hitKnockback = 4f;
+        [SerializeField, Min(0f)] private float heavyHitKnockback = 9.5f;
+        [SerializeField, Min(0f)] private float heavyHitLift = 4.8f;
+        [SerializeField, Min(0.02f)] private float heavyHitStun = 0.18f;
 
         public float DebugRunSpeed { get => runSpeed; set => runSpeed = Mathf.Clamp(value, 1f, 20f); }
         public float DebugJumpSpeed { get => jumpSpeed; set => jumpSpeed = Mathf.Clamp(value, 3f, 30f); }
@@ -59,6 +64,7 @@ namespace AshenPaw
         public bool IsHitStunned => hitStunRemaining > 0f;
         private float hitStunRemaining;
         private float hitPush;
+        private float hitLift;
         public float DodgeProgress => Mathf.Clamp01(dodgeElapsed / dodgeDuration);
         public float CrouchScale => crouchingHeight / standingHeight;
         public float CurrentHeight => IsCrouching ? crouchingHeight : standingHeight;
@@ -69,6 +75,7 @@ namespace AshenPaw
         private ContactFilter2D filter;
         private PhysicsScene2D physicsWorld;
         private PlayerCombat combat;
+        private PlayerVisuals visuals;
         private float clock;
         private readonly RaycastHit2D[] hits = new RaycastHit2D[12];
         private readonly Collider2D[] overlaps = new Collider2D[12];
@@ -77,9 +84,11 @@ namespace AshenPaw
         private float move, lastGrounded = float.NegativeInfinity, jumpQueued = float.NegativeInfinity;
         private float wallLockUntil, dodgeElapsed, dodgeReadyAt;
         private float dodgeSpeedMultiplier = 1f;
+        private float fallSpeed;
         private int facing = 1, wallDirection, dodgeDirection;
         private bool duckHeld, jumpHeld, jumpReleased, dodgeQueued;
         private bool airDodgeUsed, airDodge;
+        private bool dodgeConfirmed;
         private Vector2 spawnPosition;
 
         private void Awake()
@@ -87,6 +96,7 @@ namespace AshenPaw
             if (GetComponent<PlayerDebug>() == null) gameObject.AddComponent<PlayerDebug>();
             body = GetComponent<Rigidbody2D>();
             combat = GetComponent<PlayerCombat>();
+            visuals = GetComponent<PlayerVisuals>();
             capsule = GetComponent<CapsuleCollider2D>();
             physicsWorld = gameObject.scene.GetPhysicsScene2D();
             body.gravityScale = 0f;
@@ -100,7 +110,7 @@ namespace AshenPaw
 
         private void OnEnable()
         {
-            hitStunRemaining = 0f;
+            hitStunRemaining = hitLift = fallSpeed = 0f;
             body = GetComponent<Rigidbody2D>();
             capsule = GetComponent<CapsuleCollider2D>();
             combat = GetComponent<PlayerCombat>();
@@ -165,14 +175,19 @@ namespace AshenPaw
             clock += dt;
             IsWallSliding = false;
             if (body.position.y < -20f) { Respawn(); return; }
-            IsGrounded = body.linearVelocity.y <= 0.1f && FindGround();
+            bool wasGrounded = IsGrounded;
+            float downwardSpeed = -body.linearVelocity.y;
+            Vector2 groundPoint = body.position;
+            IsGrounded = downwardSpeed >= -0.1f && FindGround(out groundPoint);
             if (IsGrounded)
             {
+                if (!wasGrounded) visuals?.PlayLanding(groundPoint, Mathf.Max(fallSpeed, downwardSpeed));
                 combat?.ResetAirAction();
                 lastGrounded = clock;
                 airDodgeUsed = false;
             }
-            wallDirection = FindWall();
+            fallSpeed = IsGrounded ? 0f : Mathf.Max(0f, downwardSpeed);
+            wallDirection = FindWall(out Vector2 wallPoint);
             if (dodgeQueued && combat != null && !combat.CanDodge) dodgeBufferUntil = clock + 0.16f;
 
             UpdateRunBuildUp(dt);
@@ -181,7 +196,13 @@ namespace AshenPaw
             {
                 hitStunRemaining = Mathf.Max(0f, hitStunRemaining - dt);
                 hitPush = Mathf.MoveTowards(hitPush, 0f, 25f * dt);
-                body.linearVelocity = new Vector2(hitPush, Mathf.Max(body.linearVelocity.y - fallingGravity * dt, -maximumFallSpeed));
+                float vertical = body.linearVelocity.y;
+                if (hitLift > 0f)
+                {
+                    vertical = Mathf.Max(vertical, hitLift);
+                    hitLift = 0f;
+                }
+                body.linearVelocity = new Vector2(hitPush, Mathf.Max(vertical - fallingGravity * dt, -maximumFallSpeed));
                 dodgeQueued = jumpReleased = false;
                 return;
             }
@@ -233,6 +254,7 @@ namespace AshenPaw
                 airDodge = !IsGrounded;
                 if (airDodge) airDodgeUsed = true;
                 IsDodging = true;
+                dodgeConfirmed = false;
                 dodgeElapsed = 0f;
                 dodgeReadyAt = clock + dodgeCooldown;
                 dodgeDirection = InputFacing();
@@ -280,7 +302,7 @@ namespace AshenPaw
                 else if (wallDirection != 0 && clock >= wallLockUntil)
                 {
                     body.linearVelocity = velocity;
-                    JumpFromWall();
+                    JumpFromWall(wallPoint);
                     velocity = body.linearVelocity;
                 }
             }
@@ -316,19 +338,21 @@ namespace AshenPaw
             IsGrounded = false;
         }
 
-        private bool FindGround()
+        private bool FindGround(out Vector2 point)
         {
             int count = capsule.Cast(Vector2.down, filter, hits, 0.06f);
             for (int i = 0; i < count; i++)
             {
                 if (hits[i].normal.y < 0.65f) continue;
                 if (hits[i].collider.usedByEffector && capsule.bounds.min.y < hits[i].collider.bounds.max.y - 0.08f) continue;
+                point = hits[i].point;
                 return true;
             }
+            point = default;
             return false;
         }
 
-        private int FindWall()
+        private int FindWall(out Vector2 point)
         {
             int first = move == 0f ? facing : (int)Mathf.Sign(move);
             for (int side = 0; side < 2; side++)
@@ -338,8 +362,12 @@ namespace AshenPaw
                 for (int i = 0; i < count; i++)
                     if (!hits[i].collider.usedByEffector && hits[i].collider.bounds.max.y > capsule.bounds.min.y + 0.2f
                         && hits[i].normal.x * direction < -0.7f && Mathf.Abs(hits[i].normal.y) < 0.3f)
+                    {
+                        point = hits[i].point;
                         return direction;
+                    }
             }
+            point = default;
             return 0;
         }
 
@@ -366,7 +394,7 @@ namespace AshenPaw
             capsule.offset = Vector2.up * (height * 0.5f);
         }
 
-        private void JumpFromWall()
+        private void JumpFromWall(Vector2 wallPoint)
         {
             int direction = wallDirection;
             SetHeight(false);
@@ -374,13 +402,14 @@ namespace AshenPaw
             facing = -direction;
             wallLockUntil = clock + wallJumpLock;
             ConsumeJump();
+            visuals?.PlayWallJump(wallPoint, direction);
         }
 
         public void Respawn()
         {
             dodgeQueued = false;
             dodgeBufferUntil = float.NegativeInfinity;
-            hitStunRemaining = 0f;
+            hitStunRemaining = hitLift = fallSpeed = 0f;
             combat?.CancelAttack();
             combat?.ResetAirAction();
             IsDodging = false;
@@ -410,11 +439,19 @@ namespace AshenPaw
             dodgeBufferUntil = float.NegativeInfinity;
             SetHeight(false);
         }
-        public void ReceiveHit(Vector2 direction)
+        public void ConfirmDodge()
+        {
+            if (dodgeConfirmed) return;
+            dodgeConfirmed = true;
+            visuals?.PlayDodgeSuccess();
+        }
+
+        public void ReceiveHit(Vector2 direction, bool heavy = false)
         {
             IsDodging = false;
-            hitStunRemaining = 0.14f;
-            hitPush = (direction.x == 0f ? -facing : Mathf.Sign(direction.x)) * 4f;
+            hitStunRemaining = heavy ? heavyHitStun : 0.14f;
+            hitPush = (direction.x == 0f ? -facing : Mathf.Sign(direction.x)) * (heavy ? heavyHitKnockback : hitKnockback);
+            hitLift = heavy ? heavyHitLift : 0f;
             jumpQueued = float.NegativeInfinity;
             dodgeQueued = false;
         }

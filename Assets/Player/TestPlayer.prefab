@@ -144,6 +144,10 @@ MonoBehaviour:
   groundLayers:
     serializedVersion: 2
     m_Bits: 55
+  hitKnockback: 4
+  heavyHitKnockback: 9.5
+  heavyHitLift: 4.8
+  heavyHitStun: 0.18
 --- !u!114 &5494331777631242886
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -173,6 +177,7 @@ MonoBehaviour:
   animator: {fileID: 5284853387427806145}
   placeholderMotion: 1
   feetPivot: 1
+  contactMaterial: {fileID: 2100000, guid: e58fdff675357f44a89c9c56db875c58, type: 2}
   parryStance: {fileID: 7400000, guid: 87150218993340a28114a1ffdbb3d6d8, type: 2}
   criticalBite: {fileID: 7400000, guid: 87e05facd5e1485fa3eade763f688b60, type: 2}
   upwardAttacks:

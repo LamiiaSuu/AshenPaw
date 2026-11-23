@@ -10,6 +10,7 @@ namespace AshenPaw
         [SerializeField] private Animator animator;
         [SerializeField] private bool placeholderMotion = true;
         [SerializeField] private bool feetPivot;
+        [SerializeField] private Material contactMaterial;
         private PlayerMovement movement;
         private Rigidbody2D body;
         private PlayerCombat combat;
@@ -20,13 +21,19 @@ namespace AshenPaw
         [SerializeField] private AnimationClip[] downwardAttacks;
         private bool spinning;
         private Vector3 spinPivot;
-        private bool wasGrounded;
         private SpriteRenderer bodySprite;
         private Color originalColor;
-        private readonly SpriteRenderer[] trail = new SpriteRenderer[6];
-        private readonly float[] trailAge = new float[6];
+        private const int TrailSamples = 6;
+        private const int DodgeEchoIndex = TrailSamples;
+        private static readonly int FlashColor = Shader.PropertyToID("_FlashColor");
+        private static readonly Color TrailColor = new Color(0.65f, 0.85f, 1f, 0.6f);
+        private static readonly Color DodgeEchoColor = new Color(1f, 1f, 1f, 0.8f);
+        private static readonly Color DustColor = new Color32(166, 137, 117, 195);
+        private readonly SpriteRenderer[] trail = new SpriteRenderer[TrailSamples + 1];
+        private readonly float[] trailAge = new float[TrailSamples + 1];
         private int trailIndex;
         private float nextTrail;
+        private ParticleSystem contactParticles;
         [SerializeField] private AnimationClip parryStance;
         [SerializeField] private AnimationClip criticalBite;
         private SpriteRenderer biteTorso, biteHead, biteJaw;
@@ -50,17 +57,7 @@ namespace AshenPaw
             if (bodySprite != null)
             {
                 originalColor = bodySprite.color;
-                for (int i = 0; i < trail.Length; i++)
-                {
-                    var ghost = new GameObject("Dodge trail", typeof(SpriteRenderer));
-                    ghost.hideFlags = HideFlags.DontSave;
-                    trail[i] = ghost.GetComponent<SpriteRenderer>();
-                    trail[i].sharedMaterial = bodySprite.sharedMaterial;
-                    trail[i].sortingLayerID = bodySprite.sortingLayerID;
-                    trail[i].sortingOrder = bodySprite.sortingOrder - 1;
-                    trail[i].enabled = false;
-                    trailAge[i] = 1f;
-                }
+                for (int i = 0; i < trail.Length; i++) EnsureTrail(i);
             }
         }
 
@@ -169,15 +166,102 @@ namespace AshenPaw
         private void EnsureTrail(int index)
         {
             if (trail[index] != null || bodySprite == null) return;
-            var obj = new GameObject("Dodge trail", typeof(SpriteRenderer));
+            bool echo = index == DodgeEchoIndex;
+            var obj = new GameObject(echo ? "Dodge echo" : "Dodge trail", typeof(SpriteRenderer));
             obj.hideFlags = HideFlags.DontSave;
             var renderer = obj.GetComponent<SpriteRenderer>();
             renderer.sharedMaterial = bodySprite.sharedMaterial;
             renderer.sortingLayerID = bodySprite.sortingLayerID;
             renderer.sortingOrder = bodySprite.sortingOrder - 1;
+            if (echo)
+            {
+                var properties = new MaterialPropertyBlock();
+                properties.SetColor(FlashColor, new Color(1f, 0.91f, 0.82f, 0.68f));
+                renderer.SetPropertyBlock(properties);
+            }
             renderer.enabled = false;
             trail[index] = renderer;
             trailAge[index] = 1f;
+        }
+
+        public void PlayDodgeSuccess()
+        {
+            if (!isActiveAndEnabled || bodySprite == null || bodySprite.sprite == null) return;
+            StampTrail(DodgeEchoIndex, DodgeEchoColor);
+            trail[DodgeEchoIndex].transform.position += (Vector3)(body.position - (Vector2)transform.position);
+        }
+
+        public void PlayLanding(Vector2 point, float speed)
+        {
+            if (!isActiveAndEnabled || speed < 4f) return;
+            float force = Mathf.InverseLerp(4f, 24f, speed);
+            landingSquash = Mathf.Lerp(0.07f, 0.2f, force);
+            Vector2 origin = point + Vector2.up * 0.07f;
+            float spreadSpeed = Mathf.Lerp(1.45f, 3.45f, force);
+            int count = force > 0.65f ? 5 : 3;
+            Vector2 pawOffset = Vector2.right * 0.22f;
+            EmitContact(origin - pawOffset, new Vector2(-spreadSpeed, 0.95f), DustColor, count, 22f);
+            EmitContact(origin + pawOffset, new Vector2(spreadSpeed, 0.95f), DustColor, count, 22f);
+        }
+
+        public void PlayWallJump(Vector2 point, int wallSide)
+        {
+            Vector2 origin = point + new Vector2(-wallSide * 0.08f, 0.04f);
+            EmitContact(origin, new Vector2(-wallSide * 2.6f, 0.8f), DustColor, 6, 42f);
+        }
+
+        public void PlayParry(Vector2 feet, int facing)
+        {
+            Vector2 origin = feet + new Vector2(facing * 0.9f, 1.0f);
+            EmitContact(origin, new Vector2(facing * 4.5f, 1.15f), new Color32(255, 212, 152, 250), 6, 56f);
+        }
+
+        private void EmitContact(Vector2 origin, Vector2 velocity, Color color, int count, float spread)
+        {
+            if (!isActiveAndEnabled || contactMaterial == null || bodySprite == null) return;
+            if (contactParticles == null) CreateContactParticles();
+            if (!contactParticles.isPlaying) contactParticles.Play();
+            var particle = new ParticleSystem.EmitParams { position = origin, startColor = color };
+            for (int i = 0; i < count; i++)
+            {
+                float angle = Random.Range(-spread, spread);
+                particle.velocity = Quaternion.Euler(0f, 0f, angle) * velocity * Random.Range(0.65f, 1.25f);
+                particle.rotation = Random.Range(0f, 90f);
+                particle.startSize = Random.Range(0.06f, 0.12f);
+                particle.startLifetime = Random.Range(0.13f, 0.25f);
+                contactParticles.Emit(particle, 1);
+            }
+        }
+
+        private void CreateContactParticles()
+        {
+            var effect = new GameObject("Contact particles", typeof(ParticleSystem));
+            effect.hideFlags = HideFlags.DontSave;
+            effect.transform.SetParent(transform, false);
+            contactParticles = effect.GetComponent<ParticleSystem>();
+            contactParticles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+
+            var main = contactParticles.main;
+            main.playOnAwake = false;
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+            main.maxParticles = 48;
+            main.gravityModifier = 0.65f;
+            var emission = contactParticles.emission;
+            emission.enabled = false;
+            var shape = contactParticles.shape;
+            shape.enabled = false;
+            var fade = contactParticles.colorOverLifetime;
+            fade.enabled = true;
+            var gradient = new Gradient();
+            gradient.SetKeys(
+                new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
+                new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(0f, 1f) });
+            fade.color = gradient;
+
+            var renderer = effect.GetComponent<ParticleSystemRenderer>();
+            renderer.sharedMaterial = contactMaterial;
+            renderer.sortingLayerID = bodySprite.sortingLayerID;
+            renderer.sortingOrder = bodySprite.sortingOrder - 1;
         }
 
         private void LateUpdate()
@@ -196,8 +280,6 @@ namespace AshenPaw
                 visualFacing = movement.WallSlideFacing;
             Vector2 stretch = Vector2.one;
             float rotation = 0f;
-            if (!wasGrounded && movement.IsGrounded) landingSquash = 0.16f;
-            wasGrounded = movement.IsGrounded;
             landingSquash = Mathf.MoveTowards(landingSquash, 0f, Time.deltaTime * 1.5f);
             if (!animated)
             {
@@ -349,32 +431,52 @@ namespace AshenPaw
             if (bodySprite == null) return;
             bodySprite.color = (movement.IsDodging || combat != null && combat.IsCrossDashing) ? originalColor * new Color(1.15f, 1.25f, 1.4f, 1f) : originalColor;
             if (combat != null && (combat.ParryFlashing || combat.CriticalFlashing)) bodySprite.color = new Color(1.8f, 1.8f, 1.8f, originalColor.a);
-            if (health != null && health.IsHitFlashing) bodySprite.color = new Color(2f, 0.3f, 0.3f, originalColor.a);
+            if (health != null && health.IsHitFlashing)
+                bodySprite.color = Color.Lerp(originalColor, new Color(2f, 0.3f, 0.3f, originalColor.a), health.HitFlashRemaining / 0.14f);
             UpdateBiteHead();
             for (int i = 0; i < trail.Length; i++)
             {
                 EnsureTrail(i);
                 trailAge[i] += Time.deltaTime;
-                trail[i].enabled = trailAge[i] < 0.2f;
-                if (trail[i].enabled) trail[i].color = new Color(0.65f, 0.85f, 1f, (1f - trailAge[i] / 0.2f) * 0.6f);
+                bool echo = i == DodgeEchoIndex;
+                float life = echo ? 0.23f : 0.2f;
+                trail[i].enabled = trailAge[i] < life;
+                if (!trail[i].enabled) continue;
+                Color color = echo ? DodgeEchoColor : TrailColor;
+                color.a *= 1f - trailAge[i] / life;
+                trail[i].color = color;
             }
             if (!(movement.IsDodging || combat != null && combat.IsCrossDashing) || Time.time < nextTrail) return;
             nextTrail = Time.time + 0.035f;
-            var ghost = trail[trailIndex];
+            StampTrail(trailIndex, TrailColor);
+            trailIndex = (trailIndex + 1) % TrailSamples;
+        }
+
+        private void StampTrail(int index, Color color)
+        {
+            EnsureTrail(index);
+            var ghost = trail[index];
             ghost.sprite = bodySprite.sprite;
+            ghost.flipX = bodySprite.flipX;
+            ghost.flipY = bodySprite.flipY;
             ghost.transform.SetPositionAndRotation(bodySprite.transform.position, bodySprite.transform.rotation);
             ghost.transform.localScale = bodySprite.transform.lossyScale;
-            ghost.color = new Color(0.65f, 0.85f, 1f, 0.6f);
+            ghost.color = color;
             ghost.enabled = true;
-            trailAge[trailIndex] = 0f;
-            trailIndex = (trailIndex + 1) % trail.Length;
+            trailAge[index] = 0f;
         }
 
         private void OnDisable()
         {
             ShowBiteParts(false);
             if (bodySprite != null) bodySprite.color = originalColor;
-            foreach (var ghost in trail) if (ghost != null) ghost.enabled = false;
+            for (int i = 0; i < trail.Length; i++)
+            {
+                if (trail[i] != null) trail[i].enabled = false;
+                trailAge[i] = 1f;
+            }
+            landingSquash = 0f;
+            if (contactParticles != null) contactParticles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
         }
 
         private void OnDestroy()

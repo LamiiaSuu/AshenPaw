@@ -12,6 +12,7 @@ namespace AshenPaw
         private PlayerCombat combat;
         private float protectedUntil, flashUntil;
         public bool IsHitFlashing => Time.time < flashUntil;
+        public float HitFlashRemaining => Mathf.Max(0f, flashUntil - Time.time);
         private float rumbleUntil;
         private Gamepad rumblingPad;
         private GUIStyle labelStyle;
@@ -28,9 +29,17 @@ namespace AshenPaw
             => TakeDamage(damage, Vector2.right * -movement.Facing);
 
         public bool TakeDamage(int damage, Vector2 direction)
+            => TakeDamage(damage, direction, false);
+
+        public bool TakeDamage(int damage, Vector2 direction, bool heavy)
         {
             if (damage <= 0) return false;
-            if (movement.IsInvulnerable) { PlayerDebug.Report(0, true, transform.position + Vector3.up * 2f, "DODGED"); return false; }
+            if (movement.IsInvulnerable)
+            {
+                movement.ConfirmDodge();
+                PlayerDebug.Report(0, true, transform.position + Vector3.up * 2f, "DODGED");
+                return false;
+            }
             if (GetComponent<PlayerDebug>() is PlayerDebug debug && debug.Invincible) { PlayerDebug.Report(0, true, transform.position + Vector3.up * 2f, "INVINCIBLE"); return false; }
             if (Time.time < protectedUntil) { PlayerDebug.Report(0, true, transform.position + Vector3.up * 2f, "PROTECTED"); return false; }
             int actualDamage = Mathf.Min(Health, damage);
@@ -43,21 +52,21 @@ namespace AshenPaw
                 cameraShake = Camera.main.GetComponent<HitCameraShake>();
                 if (cameraShake == null) cameraShake = Camera.main.gameObject.AddComponent<HitCameraShake>();
             }
-            if (Camera.main != null && Camera.main.GetComponent<CameraFeel>() != null) CameraFeel.Hit(true);
-            else if (cameraShake != null) cameraShake.Trigger();
+            if (Camera.main != null && Camera.main.GetComponent<CameraFeel>() != null) CameraFeel.Hit(true, heavy);
+            else if (cameraShake != null) cameraShake.Trigger(heavy ? 1.4f : 1f);
             combat?.CancelAttack();
             rumblingPad = Gamepad.current;
             if (rumblingPad != null)
             {
-                rumblingPad.SetMotorSpeeds(0.35f, 0.65f);
-                rumbleUntil = Time.unscaledTime + 0.12f;
+                rumblingPad.SetMotorSpeeds(heavy ? 0.65f : 0.35f, heavy ? 0.9f : 0.65f);
+                rumbleUntil = Time.unscaledTime + (heavy ? 0.16f : 0.12f);
             }
             if (Health == 0)
             {
                 movement.Respawn();
                 Health = maxHealth;
             }
-            else movement.ReceiveHit(direction);
+            else movement.ReceiveHit(direction, heavy);
             return true;
         }
 
