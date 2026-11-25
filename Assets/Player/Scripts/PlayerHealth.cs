@@ -91,23 +91,23 @@ namespace AshenPaw
             {
                 labelStyle = new GUIStyle(GUIStyle.none)
                 {
-                    font = UiTheme.HudFont, fontSize = 15, alignment = TextAnchor.MiddleLeft
+                    font = UiTheme.HudFont, fontSize = 23, alignment = TextAnchor.MiddleLeft
                 };
                 labelStyle.normal.textColor = Color.white;
-                valueStyle = new GUIStyle(labelStyle) { fontSize = 22 };
+                valueStyle = new GUIStyle(labelStyle) { fontSize = 26 };
             }
             Color previous = GUI.color;
             Matrix4x4 previousMatrix = GUI.matrix;
             float scale = PlayerDebug.ScaleFor(Screen.width, Screen.height);
             GUI.matrix = previousMatrix * Matrix4x4.Scale(new Vector3(scale, scale, 1f));
             GUI.color = UiTheme.Gold;
-            GUI.Label(new Rect(18f, 10f, 27f, 28f), "HP", labelStyle);
+            GUI.Label(new Rect(18f, 10f, 32f, 32f), "HP", labelStyle);
             GUI.color = IsHitFlashing ? UiTheme.Hurt : UiTheme.Ivory;
-            GUI.Label(new Rect(48f, 10f, 145f, 28f), Health + " / " + maxHealth, valueStyle);
+            GUI.Label(new Rect(53f, 10f, 160f, 32f), Health + " / " + maxHealth, valueStyle);
             GUI.color = UiTheme.Surface;
-            GUI.DrawTexture(new Rect(18f, 40f, 150f, 8f), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(18f, 45f, 170f, 9f), Texture2D.whiteTexture);
             GUI.color = IsHitFlashing ? UiTheme.Ivory : new Color32(183, 71, 72, 255);
-            GUI.DrawTexture(new Rect(18f, 40f, 150f * Health / Mathf.Max(1, maxHealth), 8f), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(18f, 45f, 170f * Health / Mathf.Max(1, maxHealth), 9f), Texture2D.whiteTexture);
             GUI.color = previous;
             GUI.matrix = previousMatrix;
         }
