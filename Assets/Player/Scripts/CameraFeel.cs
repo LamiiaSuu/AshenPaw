@@ -107,7 +107,7 @@ namespace AshenPaw
 
         private void LateUpdate()
         {
-            if (frozen) return;
+            if (frozen || PauseMenu.IsPaused) return;
             if (target == null)
             {
                 target = FindAnyObjectByType<PlayerMovement>();
@@ -178,7 +178,7 @@ namespace AshenPaw
         private static float Bound(float value, float min, float max, float extent)
             => max - min <= extent * 2f ? (min + max) * 0.5f : Mathf.Clamp(value, min + extent, max - extent);
 
-        private void Thaw()
+        internal void Thaw()
         {
             if (!frozen) return;
             Time.timeScale = oldTimeScale;

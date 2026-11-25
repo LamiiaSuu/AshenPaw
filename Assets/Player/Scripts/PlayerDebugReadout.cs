@@ -107,7 +107,7 @@ namespace AshenPaw
         }
         private void OnGUI()
         {
-            if (!Visible) return;
+            if (!Visible || PauseMenu.BlocksGameplayInput) return;
             if (debugSkin == null)
             {
                 debugSkin = Instantiate(GUI.skin);

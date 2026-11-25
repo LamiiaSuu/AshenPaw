@@ -142,6 +142,7 @@ namespace AshenPaw
 
         private void Update()
         {
+            if (PauseMenu.BlocksGameplayInput) return;
             Keyboard keyboard = Keyboard.current;
             Gamepad pad = Gamepad.current;
             float keyboardMove = 0f;

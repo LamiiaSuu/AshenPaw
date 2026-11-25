@@ -107,6 +107,7 @@ namespace AshenPaw
 
         private void Update()
         {
+            if (PauseMenu.BlocksGameplayInput) return;
             if (Keyboard.current != null && Keyboard.current.gKey.wasPressedThisFrame)
                 SetDummyMode(!dummyMode);
         }

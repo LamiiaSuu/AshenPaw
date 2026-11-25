@@ -28,6 +28,7 @@ Im Mittelpunkt stehen präzises Movement, Nahkampf und Bosskämpfe. Geplant ist 
 | Sturzangriff | Beim Luft-Rechtsklick nach unten drücken | Beim Luft-Y Stick / Steuerkreuz runter |
 | Dummy / Skelett wechseln | G | Nicht belegt |
 | Debug-Modus ein- / ausblenden | H | Nicht belegt |
+| Pausenmenü | Esc | Start / Menü-Taste |
 
 Der Heavy wird bei voller Ladung automatisch ausgeführt. Rundumangriff und Luft-Rechtsklick sind jeweils einmal pro Sprung möglich. Der Debug-Modus zeigt Zustände, Werte, Gegner-HP und Hitboxen und bietet Unverwundbarkeit, Unsichtbarkeit für Gegner und einen Reset zum Startpunkt. Unlimited Stamina ist erstmal nur ein Platzhalter.
 

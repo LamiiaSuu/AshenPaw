@@ -45,6 +45,7 @@ namespace AshenPaw
         private void OnDisable() { RenderPipelineManager.beginCameraRendering -= BeforeCamera; Camera.onPreCull -= BeforeBuiltinCamera; if (active == this) active = null; Invincible = HiddenFromEnemies = UnlimitedStamina = false; foreach (var line in lines) if (line != null) line.enabled = false; }
         private void Update()
         {
+            if (PauseMenu.BlocksGameplayInput) return;
             float dt = Time.unscaledDeltaTime;
             if (dt > 0f) frameSeconds = frameSeconds <= 0f ? dt : Mathf.Lerp(frameSeconds, dt, 1f - Mathf.Exp(-dt * 4f));
             if (Keyboard.current != null && Keyboard.current.hKey.wasPressedThisFrame) { Visible = !Visible; if (!Visible) popups.Clear(); }

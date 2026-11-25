@@ -190,6 +190,7 @@ namespace AshenPaw
 
         private void Update()
         {
+            if (PauseMenu.BlocksGameplayInput) return;
             if (GetComponent<PlayerDebug>() is PlayerDebug debug && debug.PointerOverMenu) { CancelAttack(); heavyHeld = false; Tick(Time.deltaTime); return; }
             var mouse = Mouse.current;
             var pad = Gamepad.current;
