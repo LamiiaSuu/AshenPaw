@@ -7,8 +7,13 @@ namespace AshenPaw
     public sealed class PauseMenu : MonoBehaviour
     {
         private static readonly string[] Options = { "Continue", "Settings", "Quit Game" };
-        private static readonly Color Gold = new Color32(224, 178, 126, 255);
-        private static readonly Color Ivory = new Color32(239, 224, 208, 255);
+        private static readonly Color Gold = new Color32(215, 170, 122, 255);
+        private static readonly Color Ivory = new Color32(216, 204, 192, 255);
+        private const float MenuWidth = 368f;
+        private const float MenuHeight = 292f;
+        private const float Center = MenuWidth * 0.5f;
+        private const float FirstRow = 94f;
+        private const float RowSpacing = 66f;
         private static PauseMenu owner;
         private static int resumeFrame = -1;
 
@@ -20,6 +25,10 @@ namespace AshenPaw
         private int selection;
         private float previousTimeScale;
         private bool previousAudioPause;
+        private float openedAt;
+        private float markerY, markerVelocity;
+        private Font serif;
+        private Texture2D diamond;
         private GUIStyle heading, button, caption;
 
         private void Update()
@@ -49,7 +58,21 @@ namespace AshenPaw
             bool down = keys?.downArrowKey.wasPressedThisFrame == true || keys?.sKey.wasPressedThisFrame == true
                 || pad?.dpad.down.wasPressedThisFrame == true || stickStep && stick < 0f;
             if (!settingsOpen)
+            {
+                var mouse = Mouse.current;
+                if (mouse != null && mouse.delta.ReadValue().sqrMagnitude > 0.01f)
+                {
+                    float scale = MenuScale();
+                    Vector2 mousePosition = mouse.position.ReadValue();
+                    mousePosition.y = Screen.height - mousePosition.y;
+                    Vector2 local = (mousePosition - MenuOrigin(scale)) / scale;
+                    for (int i = 0; i < Options.Length; i++)
+                        if (Row(FirstRow + i * RowSpacing).Contains(local)) selection = i;
+                }
                 selection = (selection + (down ? 1 : 0) - (up ? 1 : 0) + Options.Length) % Options.Length;
+                markerY = Mathf.SmoothDamp(markerY, FirstRow + selection * RowSpacing,
+                    ref markerVelocity, 0.045f, Mathf.Infinity, Time.unscaledDeltaTime);
+            }
 
             if (keys?.enterKey.wasPressedThisFrame == true || pad?.buttonSouth.wasPressedThisFrame == true)
             {
@@ -66,6 +89,9 @@ namespace AshenPaw
             previousAudioPause = AudioListener.pause;
             selection = 0;
             settingsOpen = false;
+            openedAt = Time.unscaledTime;
+            markerY = FirstRow;
+            markerVelocity = 0f;
             stickHeld = Mathf.Abs(Gamepad.current?.leftStick.y.ReadValue() ?? 0f) >= 0.5f;
             owner = this;
             Time.timeScale = 0f;
@@ -82,6 +108,12 @@ namespace AshenPaw
         }
 
         private void OnDisable() => Continue();
+
+        private void OnDestroy()
+        {
+            if (serif != null) Destroy(serif);
+            if (diamond != null) Destroy(diamond);
+        }
 
         private void Select(int option)
         {
@@ -109,9 +141,14 @@ namespace AshenPaw
             if (owner != this) return;
             if (heading == null)
             {
-                heading = new GUIStyle(GUI.skin.label) { fontSize = 42, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleLeft };
-                button = new GUIStyle(GUIStyle.none) { fontSize = 22, alignment = TextAnchor.MiddleLeft, padding = new RectOffset(20, 16, 0, 0) };
-                caption = new GUIStyle(GUI.skin.label) { fontSize = 18, alignment = TextAnchor.MiddleLeft };
+                serif = Font.CreateDynamicFontFromOSFont(new[] { "Georgia", "DejaVu Serif", "Times New Roman" }, 30);
+                Font font = serif != null ? serif : GUI.skin.font;
+                heading = new GUIStyle(GUIStyle.none) { font = font, fontSize = 14, alignment = TextAnchor.MiddleCenter };
+                button = new GUIStyle(heading) { fontSize = 30 };
+                caption = new GUIStyle(heading) { fontSize = 19 };
+                heading.normal.textColor = Gold;
+                caption.normal.textColor = Ivory;
+                diamond = CreateDiamond();
             }
 
             var matrix = GUI.matrix;
@@ -119,27 +156,29 @@ namespace AshenPaw
             int depth = GUI.depth;
             GUI.depth = -100;
             GUI.matrix = Matrix4x4.identity;
-            Fill(new Rect(0, 0, Screen.width, Screen.height), new Color(0.05f, 0.035f, 0.045f, 0.78f));
-            float scale = Mathf.Min(Screen.width / 640f, Screen.height / 620f);
-            float panelHeight = settingsOpen ? 290f : 214f;
-            var origin = new Vector3((Screen.width - 364f * scale) * 0.5f, (Screen.height - panelHeight * scale) * 0.5f, 0f);
+            float fade = Mathf.SmoothStep(0f, 1f, (Time.unscaledTime - openedAt) / 0.18f);
+            GUI.color = new Color(1f, 1f, 1f, fade);
+            Fill(new Rect(0, 0, Screen.width, Screen.height), new Color32(28, 24, 29, 205));
+            float scale = MenuScale();
+            Vector2 origin = MenuOrigin(scale);
             GUI.matrix = Matrix4x4.TRS(origin, Quaternion.identity, new Vector3(scale, scale, 1f));
-            Fill(new Rect(0, 0, 364, panelHeight), new Color32(28, 24, 29, 250));
-            Fill(new Rect(0, 0, 364, 2), Gold);
-            heading.normal.textColor = Ivory;
-            if (settingsOpen) GUI.Label(new Rect(24, 18, 316, 60), "Settings", heading);
+            GUI.Label(new Rect(0f, 8f, MenuWidth, 24f), settingsOpen ? "S  E  T  T  I  N  G  S" : "P  A  U  S  E  D", heading);
+            DrawDivider(44f, 144f, 19f, 12f, new Color32(116, 94, 76, 255), new Color32(191, 160, 125, 255));
+            DrawDivider(273f, 72f, 11f, 10f, new Color32(87, 71, 60, 255), new Color32(146, 118, 92, 255));
 
             if (settingsOpen)
             {
-                caption.normal.textColor = Ivory;
-                GUI.Label(new Rect(24, 98, 316, 40), "Settings coming soon.", caption);
-                if (DrawButton(new Rect(24, 214, 316, 48), "Back", true)) settingsOpen = false;
+                GUI.Label(Row(FirstRow + RowSpacing * 0.5f), "Settings coming soon.", caption);
+                DrawSelection(FirstRow + 2f * RowSpacing);
+                if (DrawButton(Row(FirstRow + 2f * RowSpacing), "Back", true)) settingsOpen = false;
             }
             else
             {
+                DrawSelection(markerY);
                 for (int i = 0; i < Options.Length; i++)
                 {
-                    if (!DrawButton(new Rect(24, 24 + i * 58, 316, 48), Options[i], selection == i)) continue;
+                    float y = FirstRow + i * RowSpacing;
+                    if (!DrawButton(Row(y), Options[i], selection == i)) continue;
                     selection = i;
                     Select(i);
                     break;
@@ -151,20 +190,65 @@ namespace AshenPaw
             GUI.depth = depth;
         }
 
+        private static float MenuScale() => Mathf.Min(Screen.width / 500f, Screen.height / 525f);
+
+        private static Vector2 MenuOrigin(float scale)
+            => new Vector2((Screen.width - MenuWidth * scale) * 0.5f, (Screen.height - MenuHeight * scale) * 0.5f);
+
+        private static Rect Row(float y) => new Rect(Center - 142f, y - 24f, 284f, 48f);
+
         private bool DrawButton(Rect rect, string label, bool selected)
         {
-            bool highlighted = selected || rect.Contains(Event.current.mousePosition);
-            Fill(rect, highlighted ? new Color32(63, 46, 41, 255) : new Color32(37, 31, 36, 255));
-            if (selected) Fill(new Rect(rect.x, rect.y, 2, rect.height), Gold);
-            button.normal.textColor = button.hover.textColor = button.active.textColor = highlighted ? Gold : Ivory;
+            button.normal.textColor = button.hover.textColor = button.active.textColor = selected ? Gold : Ivory;
             return GUI.Button(rect, label, button);
         }
 
-        private static void Fill(Rect rect, Color color)
+        private void DrawSelection(float y)
         {
-            GUI.color = color;
-            GUI.DrawTexture(rect, Texture2D.whiteTexture);
-            GUI.color = Color.white;
+            DrawDiamond(Center - 114f, y, 16f, Gold);
+            DrawDiamond(Center + 114f, y, 16f, Gold);
+        }
+
+        private void DrawDivider(float y, float extent, float gap, float diamondSize, Color line, Color jewel)
+        {
+            float length = extent - gap;
+            Fill(new Rect(Center - extent, y - 0.5f, length, 1f), line);
+            Fill(new Rect(Center + gap, y - 0.5f, length, 1f), line);
+            DrawDiamond(Center, y, diamondSize, jewel);
+        }
+
+        private void DrawDiamond(float x, float y, float size, Color color)
+            => Fill(new Rect(x - size * 0.5f, y - size * 0.5f, size, size), color, diamond);
+
+        private static Texture2D CreateDiamond()
+        {
+            const int size = 32;
+            const float center = (size - 1) * 0.5f;
+            var pixels = new Color32[size * size];
+            for (int y = 0; y < size; y++)
+            for (int x = 0; x < size; x++)
+            {
+                float distance = Mathf.Abs(x - center) + Mathf.Abs(y - center);
+                byte alpha = (byte)Mathf.RoundToInt(255f * Mathf.Clamp01(size * 0.5f + 0.5f - distance));
+                pixels[y * size + x] = new Color32(255, 255, 255, alpha);
+            }
+
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false)
+            {
+                filterMode = FilterMode.Bilinear,
+                wrapMode = TextureWrapMode.Clamp
+            };
+            texture.SetPixels32(pixels);
+            texture.Apply(false, true);
+            return texture;
+        }
+
+        private static void Fill(Rect rect, Color color, Texture texture = null)
+        {
+            Color previous = GUI.color;
+            GUI.color = previous * color;
+            GUI.DrawTexture(rect, texture != null ? texture : Texture2D.whiteTexture);
+            GUI.color = previous;
         }
     }
 }
