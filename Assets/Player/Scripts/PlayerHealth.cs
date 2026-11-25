@@ -15,7 +15,7 @@ namespace AshenPaw
         public float HitFlashRemaining => Mathf.Max(0f, flashUntil - Time.time);
         private float rumbleUntil;
         private Gamepad rumblingPad;
-        private GUIStyle labelStyle;
+        private GUIStyle labelStyle, valueStyle;
         private HitCameraShake cameraShake;
 
         private void Awake()
@@ -87,16 +87,26 @@ namespace AshenPaw
         private void OnGUI()
         {
             if (!Application.isPlaying) return;
-            if (labelStyle == null) labelStyle = new GUIStyle(GUI.skin.label) { fontSize = 16, fontStyle = FontStyle.Bold };
+            if (labelStyle == null)
+            {
+                labelStyle = new GUIStyle(GUIStyle.none)
+                {
+                    font = UiTheme.HudFont, fontSize = 15, alignment = TextAnchor.MiddleLeft
+                };
+                labelStyle.normal.textColor = Color.white;
+                valueStyle = new GUIStyle(labelStyle) { fontSize = 22 };
+            }
             Color previous = GUI.color;
             Matrix4x4 previousMatrix = GUI.matrix;
             float scale = PlayerDebug.ScaleFor(Screen.width, Screen.height);
             GUI.matrix = previousMatrix * Matrix4x4.Scale(new Vector3(scale, scale, 1f));
-            GUI.color = IsHitFlashing ? new Color(1f, 0.35f, 0.3f) : Color.white;
-            GUI.Label(new Rect(18f, 12f, 180f, 25f), "HP " + Health + " / " + maxHealth, labelStyle);
-            GUI.color = new Color(0.12f, 0.08f, 0.1f, 0.9f);
+            GUI.color = UiTheme.Gold;
+            GUI.Label(new Rect(18f, 10f, 27f, 28f), "HP", labelStyle);
+            GUI.color = IsHitFlashing ? UiTheme.Hurt : UiTheme.Ivory;
+            GUI.Label(new Rect(48f, 10f, 145f, 28f), Health + " / " + maxHealth, valueStyle);
+            GUI.color = UiTheme.Surface;
             GUI.DrawTexture(new Rect(18f, 40f, 150f, 8f), Texture2D.whiteTexture);
-            GUI.color = IsHitFlashing ? Color.white : new Color(0.85f, 0.23f, 0.22f);
+            GUI.color = IsHitFlashing ? UiTheme.Ivory : new Color32(183, 71, 72, 255);
             GUI.DrawTexture(new Rect(18f, 40f, 150f * Health / Mathf.Max(1, maxHealth), 8f), Texture2D.whiteTexture);
             GUI.color = previous;
             GUI.matrix = previousMatrix;

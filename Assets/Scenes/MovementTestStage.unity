@@ -1074,10 +1074,6 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 4871576291830904287, guid: 84701de37a3fd49458f9f92f714e7eda, type: 3}
-      propertyPath: m_LocalScale.y
-      value: 0.1
-      objectReference: {fileID: 0}
     - target: {fileID: 5328179634371369885, guid: 84701de37a3fd49458f9f92f714e7eda, type: 3}
       propertyPath: m_FlipX
       value: 1
@@ -1085,10 +1081,6 @@ PrefabInstance:
     - target: {fileID: 5997955622345225491, guid: 84701de37a3fd49458f9f92f714e7eda, type: 3}
       propertyPath: m_TabSize
       value: 4
-      objectReference: {fileID: 0}
-    - target: {fileID: 5997955622345225491, guid: 84701de37a3fd49458f9f92f714e7eda, type: 3}
-      propertyPath: m_FontSize
-      value: 68
       objectReference: {fileID: 0}
     - target: {fileID: 7173686843744589953, guid: 84701de37a3fd49458f9f92f714e7eda, type: 3}
       propertyPath: m_Name

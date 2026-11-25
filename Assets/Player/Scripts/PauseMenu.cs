@@ -7,8 +7,6 @@ namespace AshenPaw
     public sealed class PauseMenu : MonoBehaviour
     {
         private static readonly string[] Options = { "Continue", "Settings", "Quit Game" };
-        private static readonly Color Gold = new Color32(215, 170, 122, 255);
-        private static readonly Color Ivory = new Color32(216, 204, 192, 255);
         private const float MenuWidth = 368f;
         private const float MenuHeight = 292f;
         private const float Center = MenuWidth * 0.5f;
@@ -27,7 +25,6 @@ namespace AshenPaw
         private bool previousAudioPause;
         private float openedAt;
         private float markerY, markerVelocity;
-        private Font serif;
         private Texture2D diamond;
         private GUIStyle heading, button, caption;
 
@@ -111,7 +108,6 @@ namespace AshenPaw
 
         private void OnDestroy()
         {
-            if (serif != null) Destroy(serif);
             if (diamond != null) Destroy(diamond);
         }
 
@@ -141,13 +137,11 @@ namespace AshenPaw
             if (owner != this) return;
             if (heading == null)
             {
-                serif = Font.CreateDynamicFontFromOSFont(new[] { "Georgia", "DejaVu Serif", "Times New Roman" }, 30);
-                Font font = serif != null ? serif : GUI.skin.font;
-                heading = new GUIStyle(GUIStyle.none) { font = font, fontSize = 14, alignment = TextAnchor.MiddleCenter };
+                heading = new GUIStyle(GUIStyle.none) { font = UiTheme.MenuFont, fontSize = 14, alignment = TextAnchor.MiddleCenter };
                 button = new GUIStyle(heading) { fontSize = 30 };
                 caption = new GUIStyle(heading) { fontSize = 19 };
-                heading.normal.textColor = Gold;
-                caption.normal.textColor = Ivory;
+                heading.normal.textColor = UiTheme.Gold;
+                caption.normal.textColor = UiTheme.Ivory;
                 diamond = CreateDiamond();
             }
 
@@ -158,7 +152,9 @@ namespace AshenPaw
             GUI.matrix = Matrix4x4.identity;
             float fade = Mathf.SmoothStep(0f, 1f, (Time.unscaledTime - openedAt) / 0.18f);
             GUI.color = new Color(1f, 1f, 1f, fade);
-            Fill(new Rect(0, 0, Screen.width, Screen.height), new Color32(28, 24, 29, 205));
+            Color backdrop = UiTheme.Surface;
+            backdrop.a = 205f / 255f;
+            Fill(new Rect(0, 0, Screen.width, Screen.height), backdrop);
             float scale = MenuScale();
             Vector2 origin = MenuOrigin(scale);
             GUI.matrix = Matrix4x4.TRS(origin, Quaternion.identity, new Vector3(scale, scale, 1f));
@@ -199,14 +195,14 @@ namespace AshenPaw
 
         private bool DrawButton(Rect rect, string label, bool selected)
         {
-            button.normal.textColor = button.hover.textColor = button.active.textColor = selected ? Gold : Ivory;
+            button.normal.textColor = button.hover.textColor = button.active.textColor = selected ? UiTheme.Gold : UiTheme.Ivory;
             return GUI.Button(rect, label, button);
         }
 
         private void DrawSelection(float y)
         {
-            DrawDiamond(Center - 114f, y, 16f, Gold);
-            DrawDiamond(Center + 114f, y, 16f, Gold);
+            DrawDiamond(Center - 114f, y, 16f, UiTheme.Gold);
+            DrawDiamond(Center + 114f, y, 16f, UiTheme.Gold);
         }
 
         private void DrawDivider(float y, float extent, float gap, float diamondSize, Color line, Color jewel)

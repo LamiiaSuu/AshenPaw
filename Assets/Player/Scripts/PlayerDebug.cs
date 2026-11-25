@@ -48,7 +48,11 @@ namespace AshenPaw
             if (PauseMenu.BlocksGameplayInput) return;
             float dt = Time.unscaledDeltaTime;
             if (dt > 0f) frameSeconds = frameSeconds <= 0f ? dt : Mathf.Lerp(frameSeconds, dt, 1f - Mathf.Exp(-dt * 4f));
-            if (Keyboard.current != null && Keyboard.current.hKey.wasPressedThisFrame) { Visible = !Visible; if (!Visible) popups.Clear(); }
+            if (Keyboard.current != null && Keyboard.current.hKey.wasPressedThisFrame)
+            {
+                Visible = !Visible;
+                if (!Visible) popups.RemoveAll(popup => popup.amount <= 0);
+            }
             if (Visible && Time.unscaledTime >= refreshAt)
             {
                 enemies = FindObjectsByType<TestEnemy>();
@@ -65,23 +69,29 @@ namespace AshenPaw
         private void DrawPanel()
         {
             if (!Visible) return;
-            GUILayout.BeginArea(panel, GUI.skin.box);
+            Rect rect = panel;
+            DrawPanelBackground(rect);
+            GUILayout.BeginArea(new Rect(rect.x + 12f, rect.y + 8f, rect.width - 24f, rect.height - 16f));
             scroll = GUILayout.BeginScrollView(scroll);
-            GUILayout.Label("DEBUG  [H]");
+            GUILayout.Label("DEBUG  [H]", titleStyle);
             GUILayout.Label(frameSeconds > 0f ? $"FPS  {1f / frameSeconds:0}   |   {frameSeconds * 1000f:0.0} ms" : "FPS  --");
-            GUILayout.Label("Cyan: player | Magenta: parry window | Green: enemies\nYellow/orange: attacks | Red: active");
+            GUILayout.Label("Cyan: player | Green: enemies\nMagenta: parry window | Red: active\nYellow/orange: attacks");
             GUILayout.Label("State: " + State);
             GUILayout.Label($"Position: {body.position.x:F2}, {body.position.y:F2}");
             GUILayout.Label($"Velocity: {body.linearVelocity.x:F2}, {body.linearVelocity.y:F2}  |  {body.linearVelocity.magnitude:F2}");
             if (health != null) GUILayout.Label("Player HP: " + health.Health);
-            GUILayout.Label($"Grounded: {movement.IsGrounded}   i-Frames: {movement.IsInvulnerable}");
-            if (combat != null) GUILayout.Label($"Combo: {combat.ComboStep + 1}   Heavy: {combat.ChargeAmount:P0}   Buffered dash: {movement.HasBufferedDodge}");
+            GUILayout.Label($"Grounded: {movement.IsGrounded} | i-Frames: {movement.IsInvulnerable}");
+            if (combat != null)
+            {
+                GUILayout.Label($"Combo: {combat.ComboStep + 1} | Heavy: {combat.ChargeAmount:P0}");
+                GUILayout.Label($"Buffered dash: {movement.HasBufferedDodge}");
+            }
             Invincible = GUILayout.Toggle(Invincible, "Invincible");
             HiddenFromEnemies = GUILayout.Toggle(HiddenFromEnemies, "Hidden from enemies");
             UnlimitedStamina = GUILayout.Toggle(UnlimitedStamina, "Unlimited stamina (placeholder)");
             GUILayout.Space(8);
             if (GUILayout.Button("Return to spawn")) movement.Respawn();
-            GUILayout.Space(8); GUILayout.Label("Enemies");
+            GUILayout.Space(8); GUILayout.Label("Enemies", titleStyle);
             foreach (var enemy in enemies) if (enemy != null) GUILayout.Label(enemy.DebugInfo);
             DrawExtra?.Invoke();
             GUILayout.EndScrollView(); GUILayout.EndArea();

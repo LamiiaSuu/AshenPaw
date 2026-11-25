@@ -45,3 +45,13 @@ Pfeile zeigen die Reihenfolge. Die meisten Inputs können gebuffered werden.
 | Dash → Heavy | Shift / K → im Dash Rechtsklick kurz tippen | B → im Dash Y kurz tippen | Bricht den Dash früh für einen kurzen Biss nach vorne ab. |
 | Dash → Biss mit Seitenwechsel | Shift / K → im Dash Rechtsklick halten | B → im Dash Y halten | Früh halten, um noch während des Dashs in den Seitenwechsel zu gehen. Dabei können Movement-Inputs die Seite bestimmen. |
 
+## UI-Schriften
+
+| Bereich | Schrift |
+| --- | --- |
+| Menüs | Gelasio Regular |
+| HUD | Source Sans 3 Semibold |
+| Debug | Source Code Pro Regular |
+| Schadenszahlen | Gelasio Bold |
+
+Gold steht für die Auswahl und ausgeteilten Schaden, Rot für Schaden am Wolf und blasses Grün für einen erfolgreichen Dodge. Die Fonts und ihre OFL-Lizenzen sind im Projekt dabei.

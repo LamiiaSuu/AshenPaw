@@ -45,6 +45,7 @@ namespace AshenPaw
         [SerializeField] private SpriteRenderer healthFill;
         [SerializeField] private Transform healthBar;
         [SerializeField] private TextMesh status;
+        [SerializeField] private TextMesh enemyName;
         [SerializeField] private Sprite effectSprite;
         [SerializeField] private Material effectMaterial;
 
@@ -497,19 +498,21 @@ namespace AshenPaw
             }
             if (healthBar != null) healthBar.gameObject.SetActive(PlayerDebug.ShowEnemyHealth);
             if (status != null) status.gameObject.SetActive(PlayerDebug.ShowEnemyHealth);
-            if (healthBar != null) healthBar.position = transform.position + Vector3.up * (1.7f * Size + 0.45f);
+            if (healthBar != null) healthBar.position = transform.position + Vector3.up * (1.65f * Size + 0.4f);
             if (healthFill != null)
             {
                 float amount = (float)Health / MaxHealth;
-                healthFill.transform.localScale = new Vector3(Mathf.Max(0.001f, amount) * 1.8f, 0.08f, 1f);
-                healthFill.transform.localPosition = new Vector3(-0.9f + amount * 0.9f, 0f, 0f);
-                healthFill.color = dummyMode ? new Color(0.9f, 0.7f, 0.3f) : new Color(0.9f, 0.3f, 0.3f);
+                const float halfWidth = 1.035f;
+                healthFill.transform.localScale = new Vector3(amount * halfWidth * 2f, 0.052f, 1f);
+                healthFill.transform.localPosition = new Vector3((amount - 1f) * halfWidth, 0f, 0f);
+                healthFill.color = dummyMode ? UiTheme.Gold : new Color32(190, 103, 99, 255);
             }
-            if (status != null)
+            if (status != null) status.text = Health + "/" + MaxHealth;
+            if (enemyName != null)
             {
                 bool open = IsParried && criticalOwner == null;
-                status.text = (dummyMode ? "DUMMY " : "SKELETON ") + Health + "/" + MaxHealth
-                    + (open ? "  <color=#FFC578>OPEN</color>" : "");
+                enemyName.text = open ? "OPEN" : dummyMode ? "DUMMY" : "SKELETON";
+                enemyName.color = open ? new Color32(255, 197, 120, 255) : UiTheme.Muted;
             }
         }
     }
