@@ -26,7 +26,8 @@ namespace AshenPaw
         private readonly Dictionary<TestEnemy, Collider2D[]> enemyColliders = new Dictionary<TestEnemy, Collider2D[]>();
         private readonly Dictionary<TestEnemy, Rigidbody2D> enemyBodies = new Dictionary<TestEnemy, Rigidbody2D>();
         private Vector2 scroll;
-        private Rect panel => new Rect(12, 78, 430, Mathf.Min(620f, Screen.height / UiScale - 90f));
+        private const float PanelTop = 198f;
+        private Rect panel => new Rect(12, PanelTop, 430, Mathf.Min(620f, Screen.height / UiScale - PanelTop - 12f));
         public bool PointerOverMenu => Visible && Mouse.current != null && (panel.Contains(new Vector2(Mouse.current.position.x.ReadValue(), Screen.height - Mouse.current.position.y.ReadValue()) / UiScale) || CombatPanel.Contains(new Vector2(Mouse.current.position.x.ReadValue(), Screen.height - Mouse.current.position.y.ReadValue()) / UiScale));
         private void Awake()
         {
@@ -88,7 +89,7 @@ namespace AshenPaw
             }
             Invincible = GUILayout.Toggle(Invincible, "Invincible");
             HiddenFromEnemies = GUILayout.Toggle(HiddenFromEnemies, "Hidden from enemies");
-            UnlimitedStamina = GUILayout.Toggle(UnlimitedStamina, "Unlimited stamina (placeholder)");
+            UnlimitedStamina = GUILayout.Toggle(UnlimitedStamina, "Unlimited stamina");
             GUILayout.Space(8);
             if (GUILayout.Button("Return to spawn")) movement.Respawn();
             GUILayout.Space(8); GUILayout.Label("Enemies", titleStyle);

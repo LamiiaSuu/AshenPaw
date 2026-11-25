@@ -408,6 +408,7 @@ namespace AshenPaw
 
         public void Respawn()
         {
+            GetComponent<PlayerHealth>()?.RestoreVitals();
             dodgeQueued = false;
             dodgeBufferUntil = float.NegativeInfinity;
             hitStunRemaining = hitLift = fallSpeed = 0f;

@@ -161,6 +161,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AshenPaw.PlayerHealth
   maxHealth: 100
+  hudPrefab: {fileID: 7432286860317580414, guid: eb359b1c4ef467a4193b464130514d3f, type: 3}
+  maxStamina: 100
+  staminaRegenPerSecond: 25
+  stamina: 100
 --- !u!114 &391775347239595171
 MonoBehaviour:
   m_ObjectHideFlags: 0
