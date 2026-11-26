@@ -45,9 +45,9 @@ Pfeile zeigen die Reihenfolge. Die meisten Inputs können gebuffered werden.
 | Dash → Heavy | Shift / K → im Dash Rechtsklick kurz tippen | B → im Dash Y kurz tippen | Bricht den Dash früh für einen kurzen Biss nach vorne ab. |
 | Dash → Biss mit Seitenwechsel | Shift / K → im Dash Rechtsklick halten | B → im Dash Y halten | Früh halten, um noch während des Dashs in den Seitenwechsel zu gehen. Dabei können Movement-Inputs die Seite bestimmen. |
 
-## UI-Schriften
+## UI-Fonts
 
-| Bereich | Schrift |
+| Bereich | Fonts |
 | --- | --- |
 | Menüs | Gelasio Regular |
 | HUD | Source Sans 3 Semibold |
