@@ -18,6 +18,10 @@ namespace AshenPaw
         internal static bool IsPaused => owner != null;
         internal static bool BlocksGameplayInput => IsPaused || Time.frameCount == resumeFrame;
 
+        [SerializeField] private AudioClip selectionSound;
+        [SerializeField, Range(0f, 1f)] private float selectionVolume = 0.12f;
+
+        private AudioSource selectionSource;
         private bool settingsOpen;
         private bool stickHeld;
         private int selection;
@@ -56,6 +60,7 @@ namespace AshenPaw
                 || pad?.dpad.down.wasPressedThisFrame == true || stickStep && stick < 0f;
             if (!settingsOpen)
             {
+                int nextSelection = selection;
                 var mouse = Mouse.current;
                 if (mouse != null && mouse.delta.ReadValue().sqrMagnitude > 0.01f)
                 {
@@ -64,9 +69,10 @@ namespace AshenPaw
                     mousePosition.y = Screen.height - mousePosition.y;
                     Vector2 local = (mousePosition - MenuOrigin(scale)) / scale;
                     for (int i = 0; i < Options.Length; i++)
-                        if (Row(FirstRow + i * RowSpacing).Contains(local)) selection = i;
+                        if (Row(FirstRow + i * RowSpacing).Contains(local)) nextSelection = i;
                 }
-                selection = (selection + (down ? 1 : 0) - (up ? 1 : 0) + Options.Length) % Options.Length;
+                nextSelection = (nextSelection + (down ? 1 : 0) - (up ? 1 : 0) + Options.Length) % Options.Length;
+                SetSelection(nextSelection);
                 markerY = Mathf.SmoothDamp(markerY, FirstRow + selection * RowSpacing,
                     ref markerVelocity, 0.045f, Mathf.Infinity, Time.unscaledDeltaTime);
             }
@@ -76,6 +82,24 @@ namespace AshenPaw
                 if (settingsOpen) settingsOpen = false;
                 else Select(selection);
             }
+        }
+
+        private void SetSelection(int option)
+        {
+            if (selection == option) return;
+            selection = option;
+            if (selectionSound == null) return;
+
+            if (selectionSource == null)
+            {
+                selectionSource = gameObject.AddComponent<AudioSource>();
+                selectionSource.playOnAwake = false;
+                selectionSource.ignoreListenerPause = true;
+            }
+
+            selectionSource.clip = selectionSound;
+            selectionSource.volume = selectionVolume;
+            selectionSource.Play();
         }
 
         private void Open()
@@ -175,7 +199,7 @@ namespace AshenPaw
                 {
                     float y = FirstRow + i * RowSpacing;
                     if (!DrawButton(Row(y), Options[i], selection == i)) continue;
-                    selection = i;
+                    SetSelection(i);
                     Select(i);
                     break;
                 }

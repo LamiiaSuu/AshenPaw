@@ -22,7 +22,15 @@ namespace AshenPaw
         private float attackCooldownRemaining;
         
         public event System.Action StrikeCharged;
+        public event System.Action HeavyReleased;
         public event System.Action StrikeStarted;
+        public event System.Action CrossBiteHit;
+        public event System.Action<float> CriticalBiteStarted;
+        public event System.Action CriticalBiteHit;
+        public event System.Action CriticalBiteEnded;
+        public event System.Action ParryStarted;
+        public event System.Action ParrySucceeded;
+        public event System.Action ParryMissed;
 
         public bool DebugAttackActive => dashStrikeActive || IsLunging && IsAirDive || IsAttacking && elapsed >= windup && elapsed < windup + activeTime;
         private Vector2 attackAim = Vector2.right;
@@ -80,6 +88,7 @@ namespace AshenPaw
         private Collider2D airTarget;
         private float lungeTime;
         public bool IsSnapBite { get; private set; }
+        public bool IsLightComboBite => IsSnapBite && snapBiteFromLightCombo;
         public float SnapVelocityX => AttackFacing * Mathf.Lerp(12f, 3f, Mathf.Clamp01(elapsed / 0.14f));
         public float CrossBiteVelocityX => !IsCrossBite || elapsed >= 0.4f ? 0f : Mathf.Clamp((CrossPosition((elapsed + Time.fixedDeltaTime) / 0.4f) - body.position.x) / Time.fixedDeltaTime, -28f, 28f);
         public bool IsCrossDashing => IsCrossBite && elapsed < 0.4f;
@@ -159,6 +168,8 @@ namespace AshenPaw
         private float crossHoldTime;
         private bool crossBiteQueued;
         private bool crossFromDodge;
+        private bool crossBiteConnected;
+        private bool snapBiteFromLightCombo;
         private Vector2 dashHeavyOrigin;
         private float crossHopStart;
         public float CrossVisualProgress => Mathf.Lerp(crossHopStart, 1f, CrossDashProgress);
@@ -291,7 +302,9 @@ namespace AshenPaw
             attackCooldownRemaining = Mathf.Max(0f, attackCooldownRemaining - dt);
             if (IsParrying)
             {
+                bool canStillParry = parryTime > parryRecovery;
                 parryTime = Mathf.Max(0f, parryTime - dt);
+                if (canStillParry && parryTime <= parryRecovery) ParryMissed?.Invoke();
                 return;
             }
             if (IsCritical)
@@ -306,6 +319,7 @@ namespace AshenPaw
                         criticalRecoilElapsed = 0f;
                         criticalRecoilActive = true;
                         criticalFlashUntil = Time.unscaledTime + 0.065f;
+                        CriticalBiteHit?.Invoke();
                         CameraFeel.CriticalHit(criticalTarget.Feet + Vector2.up * 0.8f, AttackFacing);
                     }
                 }
@@ -401,12 +415,13 @@ namespace AshenPaw
                 else
                 {
                     crossBiteQueued = false;
-                    StartSnapBite();
+                    StartSnapBite(fromLightCombo: true);
                 }
                 return;
             }
             if (IsCrossBite && elapsed >= 0.24f) AttackFacing = -crossDirection;
-            if (!strikeStarted && elapsed >= windup)
+            float strikeSoundTime = windup + (IsStandardAttack && !IsHeavyAttack ? 0.035f : 0f);
+            if (!strikeStarted && elapsed >= strikeSoundTime)
             {
                 strikeStarted = true;
                 StrikeStarted?.Invoke();
@@ -435,6 +450,7 @@ namespace AshenPaw
                 || movement.IsHitStunned || IsParrying || IsCharging || IsAttacking) return false;
             AttackFacing = movement.InputFacing();
             parryTime = parryStartup + parryWindow + parryRecovery;
+            ParryStarted?.Invoke();
             return true;
         }
 
@@ -445,6 +461,7 @@ namespace AshenPaw
             if (!enemy.TryStaggerFromParry(-strikeDirection.x)) return false;
             parryTime = 0f;
             parryFlashUntil = Time.time + 0.16f;
+            ParrySucceeded?.Invoke();
             GetComponent<PlayerVisuals>()?.PlayParry(body.position, AttackFacing);
             PlayerDebug.Report(0, true, body.position + Vector2.up * 1.6f, "PARRY");
             return true;
@@ -485,6 +502,7 @@ namespace AshenPaw
             criticalHit = false;
             criticalFlashUntil = 0f;
             CriticalLungeDistance = Mathf.Clamp(distance - 0.38f, 0.18f, 1.17f);
+            CriticalBiteStarted?.Invoke(windup);
             return true;
         }
 
@@ -539,6 +557,7 @@ namespace AshenPaw
             activeTime = 0.14f;
             recovery = 0.18f;
             BeginAttack();
+            HeavyReleased?.Invoke();
         }
 
         private void StartDashAttack()
@@ -663,7 +682,7 @@ namespace AshenPaw
             }
         }
 
-        private void StartSnapBite()
+        private void StartSnapBite(bool fromLightCombo = false)
         {
             crossBiteQueued = crossFromDodge = dashStrikeActive = false;
             IsCharging = IsDashAttack = IsCrossBite = false;
@@ -676,6 +695,7 @@ namespace AshenPaw
             recovery = 0.1f;
             BeginAttack();
             IsSnapBite = true;
+            snapBiteFromLightCombo = fromLightCombo;
         }
 
         private float CrossPosition(float progress)
@@ -699,6 +719,7 @@ namespace AshenPaw
         {
             crossHopStart = 0f;
             crossBiteQueued = false;
+            crossBiteConnected = false;
             heavyQueued = false;
             IsCharging = IsDashAttack = false;
             IsHeavyAttack = IsCrossBite = true;
@@ -823,14 +844,22 @@ namespace AshenPaw
                 var terrain = new ContactFilter2D { useTriggers = false, useLayerMask = true, layerMask = terrainLayers };
                 if (direction.sqrMagnitude > 0.001f && (IsAirLunge ? TerrainBlocks(origin, direction) : physics.Raycast(origin, direction.normalized, direction.magnitude, terrain, walls) > 0)) continue;
                 hitTargets.Add(enemy);
-                if (!enemy.TakeDamage(damage, IsDirectionalAttack ? attackAim : Vector2.right * AttackFacing, CanInterruptEnemy)) continue;
+                if (!enemy.TakeDamage(damage, IsDirectionalAttack ? attackAim : Vector2.right * AttackFacing,
+                    CanInterruptEnemy, IsHeavyAttack && !IsDashAttack)) continue;
+                if (IsCrossBite && !crossBiteConnected)
+                {
+                    crossBiteConnected = true;
+                    CrossBiteHit?.Invoke();
+                }
                 CameraFeel.Hit(false, IsHeavyAttack);
             }
         }
 
         public void CancelAttack()
         {
+            if (IsParrying && parryTime > parryRecovery) ParryMissed?.Invoke();
             parryTime = 0f;
+            if (IsCritical) CriticalBiteEnded?.Invoke();
             IsCritical = false;
             criticalRecoilActive = false;
             if (criticalTarget != null) criticalTarget.ReleaseCritical(this);

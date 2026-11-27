@@ -1,5 +1,3 @@
-using System.Xml.Serialization;
-using NUnit.Framework.Internal;
 using UnityEngine;
 
 namespace AshenPaw
@@ -12,6 +10,7 @@ namespace AshenPaw
 
         [Header("Damage Taken")]
         [SerializeField] private AudioClip[] biteDamage;
+        [SerializeField] private AudioClip[] heavyBiteDamage;
         [SerializeField] private AudioClip[] slashDamage;
 
         [Header("Mix")]
@@ -39,12 +38,9 @@ namespace AshenPaw
             testEnemy.DamageTaken -= OnDamageTaken;
         }
 
-        private void OnDamageTaken()
+        private void OnDamageTaken(bool heavyHitSound)
         {
-            if (testEnemy.damageTaken)
-            {
-                Play(biteDamage, 0.05f);
-            }
+            Play(heavyHitSound ? heavyBiteDamage : biteDamage, 0.05f);
         }
 
         private void Play(AudioClip[] clips, float volumeScale = 1f)

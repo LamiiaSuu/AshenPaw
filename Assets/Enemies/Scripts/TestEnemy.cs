@@ -54,8 +54,7 @@ namespace AshenPaw
         public int MaxHealth => dummyMode ? 500 : 100;
         public bool IsDead => state == State.Dead || state == State.Reviving;
 
-        public bool damageTaken {get; private set;}
-        public event System.Action DamageTaken;
+        public event System.Action<bool> DamageTaken;
 
         private Rigidbody2D body;
         private CapsuleCollider2D capsule;
@@ -366,7 +365,7 @@ namespace AshenPaw
         {
             if (!IsParried || criticalOwner != owner) return false;
             criticalOwner = null;
-            if (!ApplyDamage(damage, true, "CRITICAL")) return false;
+            if (!ApplyDamage(damage, true, "CRITICAL", false)) return false;
             if (!IsDead)
             {
                 criticalRecoilTime = 0.56f;
@@ -375,17 +374,16 @@ namespace AshenPaw
             return true;
         }
 
-        public bool TakeDamage(int damage, Vector2 direction, bool heavy)
-            => ApplyDamage(damage, heavy && !IsParried, "ENEMY HIT");
+        public bool TakeDamage(int damage, Vector2 direction, bool heavy, bool heavyHitSound = false)
+            => ApplyDamage(damage, heavy && !IsParried, "ENEMY HIT", heavyHitSound);
 
-        private bool ApplyDamage(int damage, bool heavy, string outcome)
+        private bool ApplyDamage(int damage, bool heavy, string outcome, bool heavyHitSound)
         {
             if (damage <= 0 || state == State.Dead || state == State.Reviving || state == State.Breaking) return false;
             int actualDamage = Mathf.Min(Health, damage);
             Health = Mathf.Max(0, Health - damage);
             flashTime = 0.12f;
-            damageTaken = true;
-            DamageTaken?.Invoke();
+            DamageTaken?.Invoke(heavyHitSound);
             if (Health == 0)
             {
                 if (dummyMode) ChangeState(State.Breaking);

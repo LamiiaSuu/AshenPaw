@@ -298,6 +298,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d3176f884a2f4b3593a0eaa3034d741f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  selectionSound: {fileID: 8300000, guid: 5bc92e93a46249daa5a860139c7874d6, type: 3}
+  selectionVolume: 0.12
 --- !u!1 &113257812
 GameObject:
   m_ObjectHideFlags: 0
@@ -817,8 +819,9 @@ MonoBehaviour:
   lightAttack:
   - {fileID: 8300000, guid: 590640b4f5f85d24e98d37bc897d466a, type: 3}
   biteDamage:
+  - {fileID: 8300000, guid: b95a67104093ae845bd2b4dfb0f217e0, type: 3}
+  heavyBiteDamage:
   - {fileID: 8300000, guid: 15b4c6f30a8d31a4fbc79007c3ceedad, type: 3}
-  - {fileID: 8300000, guid: a79b6ffc7cfd0674b971ffc63c186f9c, type: 3}
   slashDamage: []
   volume: 1
   pitchVariation: 0.08
@@ -1354,28 +1357,35 @@ MonoBehaviour:
   chargingAttackSounds:
   - {fileID: 8300000, guid: 8fcce53b11305ff42926eca5a1a0fb5b, type: 3}
   lightBiteAttackSounds:
-  - {fileID: 8300000, guid: 27db15e0428bbb246bfb8fc165ce9703, type: 3}
-  heavyBiteAttackSounds: []
+  - {fileID: 8300000, guid: 85bf50a5f6ba44f68503bd23914a3b98, type: 3}
+  - {fileID: 8300000, guid: 659ba322ba3c4d8db886a3ef490cb76d, type: 3}
+  heavyBiteAttackSounds:
+  - {fileID: 8300000, guid: a4a71b8735c04fbe9d63840c5119537e, type: 3}
+  crossBiteHitSound: {fileID: 8300000, guid: fc9015d52fea43359c59635864e5599c, type: 3}
   lightSlashAttackSounds: []
   heavySlashAttackSounds: []
+  counterBiteSound: {fileID: 8300000, guid: b4268106eba144c896e5ca16841d2ae9, type: 3}
+  counterBiteBuildup: {fileID: 8300000, guid: a9fd15a0c3b34ed3a68529fd55507dc2, type: 3}
+  counterBiteVolume: 0.62
+  parryWhoosh: {fileID: 8300000, guid: 9c0cc582d50d4d43bff1dbe93d07b537, type: 3}
+  parryDrop: {fileID: 8300000, guid: 053c81f32b9d427d91a621e7259118a1, type: 3}
+  parryVolume: 0.7
   healthVolume: 0.5
   bluntDamageSounds:
-  - {fileID: 8300000, guid: 4dae3c8ae7723fc47830daba78954d6f, type: 3}
+  - {fileID: 8300000, guid: 15b4c6f30a8d31a4fbc79007c3ceedad, type: 3}
   slashDamageSounds: []
   deathSounds:
   - {fileID: 8300000, guid: 462fefdb04eab6144923681413d22ece, type: 3}
   footstepVolume: 0.02
   footstepSounds:
   - {fileID: 8300000, guid: ad486af34ed90774ebfbbc612b6c0f96, type: 3}
-  movementVolume: 0.5
-  jumpSounds:
-  - {fileID: 8300000, guid: afacb7f58839b7f4abdbcb5706d5647c, type: 3}
-  - {fileID: 8300000, guid: c281a815a1013f14fb1f8100e378b99a, type: 3}
+  movementVolume: 0.56
+  jumpWhoosh: {fileID: 8300000, guid: eace3e12a26c4b98ad00ca76d000ad34, type: 3}
+  jumpWhooshVolume: 0.02
   landSounds:
   - {fileID: 8300000, guid: 84aceddef8ace2643a257369de7ac18f, type: 3}
   dodgeSounds:
-  - {fileID: 8300000, guid: 22545a722b1d13047bfd69cc6da82e77, type: 3}
-  - {fileID: 8300000, guid: a54e4c65e0f9ec44790f1a0af87a1dbe, type: 3}
+  - {fileID: 8300000, guid: f6ad656a6cd34f06beee02d9df574da2, type: 3}
   volume: 0.8
   pitchVariation: 0.03
 --- !u!82 &616093664
