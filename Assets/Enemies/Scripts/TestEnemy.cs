@@ -54,6 +54,9 @@ namespace AshenPaw
         public int MaxHealth => dummyMode ? 500 : 100;
         public bool IsDead => state == State.Dead || state == State.Reviving;
 
+        public bool damageTaken {get; private set;}
+        public event System.Action DamageTaken;
+
         private Rigidbody2D body;
         private CapsuleCollider2D capsule;
         private PhysicsScene2D physics;
@@ -381,6 +384,8 @@ namespace AshenPaw
             int actualDamage = Mathf.Min(Health, damage);
             Health = Mathf.Max(0, Health - damage);
             flashTime = 0.12f;
+            damageTaken = true;
+            DamageTaken?.Invoke();
             if (Health == 0)
             {
                 if (dummyMode) ChangeState(State.Breaking);

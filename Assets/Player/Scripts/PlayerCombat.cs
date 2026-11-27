@@ -20,6 +20,9 @@ namespace AshenPaw
         [SerializeField] private float fullChargeTime = 1.1f;
         [SerializeField, Min(0f), InspectorName("Pause nach Combo (Sekunden)")] private float comboCooldown = 0.12f;
         private float attackCooldownRemaining;
+        
+        public event System.Action StrikeCharged;
+        public event System.Action StrikeStarted;
 
         public bool DebugAttackActive => dashStrikeActive || IsLunging && IsAirDive || IsAttacking && elapsed >= windup && elapsed < windup + activeTime;
         private Vector2 attackAim = Vector2.right;
@@ -214,6 +217,8 @@ namespace AshenPaw
                 {
                     StartDashAttack();
                     dashStrikeActive = true;
+                    strikeStarted = true;
+                    StrikeStarted?.Invoke();
                     lastDashPosition = body.position;
                     FindDashHits();
                 }
@@ -272,6 +277,7 @@ namespace AshenPaw
             if (held && attackCooldownRemaining <= 0f && !heavyHeld && !heavyNeedsRelease && !IsAttacking && !IsCharging && movement.IsGrounded && !movement.IsDodging)
             {
                 IsCharging = true;
+                StrikeCharged?.Invoke();
                 chargeTime = 0f;
                 AttackFacing = movement.InputFacing();
             }
@@ -338,6 +344,7 @@ namespace AshenPaw
                 heavyQueued = false;
                 heavyNeedsRelease = false;
                 IsCharging = true;
+                StrikeCharged?.Invoke();
                 chargeTime = 0f;
                 AttackFacing = movement.InputFacing();
             }
@@ -399,7 +406,11 @@ namespace AshenPaw
                 return;
             }
             if (IsCrossBite && elapsed >= 0.24f) AttackFacing = -crossDirection;
-            if (!strikeStarted && elapsed >= windup) strikeStarted = true;
+            if (!strikeStarted && elapsed >= windup)
+            {
+                strikeStarted = true;
+                StrikeStarted?.Invoke();
+            }
             if (elapsed >= windup && previous < windup + activeTime) FindHits();
             if (!movement.HasBufferedDodge && !IsHeavyAttack && !IsAirSpin && queuedLight > 0f && ComboStep < 2 && elapsed >= windup + activeTime + 0.1f)
             {

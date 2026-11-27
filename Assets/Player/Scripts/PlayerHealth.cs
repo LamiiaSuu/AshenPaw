@@ -28,6 +28,9 @@ namespace AshenPaw
         private PlayerVitalsHud hud;
         private HitCameraShake cameraShake;
 
+        public event System.Action EnemyHitLanded;
+        public event System.Action Death;
+
         private void Awake()
         {
             movement = GetComponent<PlayerMovement>();
@@ -91,6 +94,7 @@ namespace AshenPaw
             PlayerDebug.Report(actualDamage, true, transform.position + Vector3.up * 2f, "PLAYER HIT");
             protectedUntil = Time.time + 0.45f;
             flashUntil = Time.time + 0.22f;
+            EnemyHitLanded?.Invoke();
             if (cameraShake == null && Camera.main != null)
             {
                 cameraShake = Camera.main.GetComponent<HitCameraShake>();
@@ -106,6 +110,13 @@ namespace AshenPaw
                 rumbleUntil = Time.unscaledTime + (heavy ? 0.16f : 0.12f);
             }
             if (Health == 0) movement.Respawn();
+            else movement.ReceiveHit(direction, heavy);
+            if (Health == 0)
+            {   
+                Death?.Invoke();
+                movement.Respawn();
+                Health = maxHealth;
+            }
             else movement.ReceiveHit(direction, heavy);
             return true;
         }

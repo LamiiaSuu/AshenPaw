@@ -169,3 +169,6 @@ $RECYCLE.BIN/
 # Editor swap files
 *.swp
 *.swo
+
+# VS Code 
+.vscode/

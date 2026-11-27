@@ -45,6 +45,10 @@ namespace AshenPaw
         [SerializeField, Min(0f)] private float heavyHitLift = 4.8f;
         [SerializeField, Min(0.02f)] private float heavyHitStun = 0.18f;
 
+        public event System.Action Jumped;
+        public event System.Action Dodged;
+        public event System.Action Landed;
+
         public float DebugRunSpeed { get => runSpeed; set => runSpeed = Mathf.Clamp(value, 1f, 20f); }
         public float DebugJumpSpeed { get => jumpSpeed; set => jumpSpeed = Mathf.Clamp(value, 3f, 30f); }
         public float DebugFallGravity { get => fallingGravity; set => fallingGravity = Mathf.Clamp(value, 10f, 100f); }
@@ -65,6 +69,7 @@ namespace AshenPaw
         private float hitStunRemaining;
         private float hitPush;
         private float hitLift;
+        private float lastAirVelocityY;
         public float DodgeProgress => Mathf.Clamp01(dodgeElapsed / dodgeDuration);
         public float CrouchScale => crouchingHeight / standingHeight;
         public float CurrentHeight => IsCrouching ? crouchingHeight : standingHeight;
@@ -173,10 +178,10 @@ namespace AshenPaw
         private void FixedUpdate()
         {
             float dt = Time.fixedDeltaTime;
+            bool wasGrounded = IsGrounded;
             clock += dt;
             IsWallSliding = false;
             if (body.position.y < -20f) { Respawn(); return; }
-            bool wasGrounded = IsGrounded;
             float downwardSpeed = -body.linearVelocity.y;
             Vector2 groundPoint = body.position;
             IsGrounded = downwardSpeed >= -0.1f && FindGround(out groundPoint);
@@ -187,6 +192,8 @@ namespace AshenPaw
                 lastGrounded = clock;
                 airDodgeUsed = false;
             }
+            if (IsGrounded && !wasGrounded) Landed?.Invoke();
+            if(!IsGrounded) lastAirVelocityY = body.linearVelocity.y;
             fallSpeed = IsGrounded ? 0f : Mathf.Max(0f, downwardSpeed);
             wallDirection = FindWall(out Vector2 wallPoint);
             if (dodgeQueued && combat != null && !combat.CanDodge) dodgeBufferUntil = clock + 0.16f;
@@ -267,6 +274,7 @@ namespace AshenPaw
                 if (!HasJump()) jumpQueued = float.NegativeInfinity;
                 body.linearVelocity = new Vector2(dodgeDirection * dodgeSpeed * dodgeSpeedMultiplier * 1.25f, 0f);
                 dodgeQueued = false;
+                Dodged?.Invoke();
                 return;
             }
             if (clock > dodgeBufferUntil) dodgeQueued = false;
@@ -337,6 +345,7 @@ namespace AshenPaw
         {
             jumpQueued = lastGrounded = float.NegativeInfinity;
             IsGrounded = false;
+            Jumped?.Invoke();
         }
 
         private bool FindGround(out Vector2 point)
@@ -424,6 +433,7 @@ namespace AshenPaw
             body.position = spawnPosition;
             body.linearVelocity = Vector2.zero;
             body.angularVelocity = 0f;
+            lastAirVelocityY = 0f;
         }
 
         private void OnApplicationFocus(bool focused)
