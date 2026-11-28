@@ -8,7 +8,6 @@ namespace AshenPaw
         // Existing prefabs can reference either the RectTransform or the RawImage.
         [SerializeField] private Component healthFill;
         [SerializeField] private RectTransform damageTrail;
-        [SerializeField] private Text healthValue;
         [SerializeField] private RectTransform healthMeter;
         [SerializeField] private RectTransform staminaMeter;
         [SerializeField] private Component staminaFill;
@@ -20,13 +19,12 @@ namespace AshenPaw
         [SerializeField, Min(1f)] private float baseStamina = 100f;
 
         private PlayerHealth health;
-        private RectTransform canvasRect;
+        private bool initialized;
         private RawImage healthFillImage, staminaFillImage;
         private int shownHealth, shownMaxHealth;
         private float healthTileWidth, staminaTileWidth;
         private float healthUnitsPerPoint, staminaUnitsPerPoint;
         private float healthFramePadding, staminaFramePadding;
-        private float healthValueInset;
         private float trailUnitsPerSecond;
         private float trailWaitUntil;
         public RectTransform AbilityIcons => abilityIcons;
@@ -35,16 +33,15 @@ namespace AshenPaw
         {
             healthFillImage = FindFillImage(healthFill, healthMeter);
             staminaFillImage = FindFillImage(staminaFill, staminaMeter);
-            if (canvasRect != null) return;
+            if (initialized) return;
 
-            canvasRect = (RectTransform)transform;
+            initialized = true;
             healthTileWidth = healthFillImage.rectTransform.rect.width;
             staminaTileWidth = staminaFillImage.rectTransform.rect.width;
             healthUnitsPerPoint = healthTileWidth / Mathf.Max(1f, baseHealth);
             staminaUnitsPerPoint = staminaTileWidth / Mathf.Max(1f, baseStamina);
             healthFramePadding = healthMeter.rect.width - healthTileWidth;
             staminaFramePadding = staminaMeter.rect.width - staminaTileWidth;
-            healthValueInset = healthMeter.rect.width - healthValue.rectTransform.anchoredPosition.x;
             trailUnitsPerSecond = healthTileWidth * 0.95f;
         }
 
@@ -55,7 +52,6 @@ namespace AshenPaw
             SetWidth(damageTrail, healthFillImage.rectTransform.rect.width);
             UpdateFillTexture(healthFillImage, healthTileWidth, 4f, Time.time);
             UpdateStamina();
-            PositionHealthValue();
         }
 
         public void SetStamina(float current, float maximum)
@@ -90,8 +86,6 @@ namespace AshenPaw
 
             UpdateFillTexture(healthFillImage, healthTileWidth, 4f, Time.time);
             UpdateStamina();
-            PositionHealthValue();
-            healthValue.color = health.IsHitFlashing ? UiTheme.Hurt : UiTheme.Ivory;
         }
 
         private void UpdateHealth()
@@ -100,7 +94,6 @@ namespace AshenPaw
             shownMaxHealth = health.MaxHealth;
             SetWidth(healthMeter, healthFramePadding + shownMaxHealth * healthUnitsPerPoint);
             SetWidth(healthFillImage.rectTransform, shownHealth * healthUnitsPerPoint);
-            healthValue.text = shownHealth + " / " + shownMaxHealth;
         }
 
         private void UpdateStamina() => SetStamina(health.Stamina, health.MaxStamina);
@@ -118,16 +111,6 @@ namespace AshenPaw
             float offset = Mathf.Repeat(-time * scrollSpeed / tileWidth, 2f);
             float width = fill.rectTransform.rect.width / tileWidth;
             fill.uvRect = new Rect(offset, 0f, width, 1f);
-        }
-
-        private void PositionHealthValue()
-        {
-            RectTransform valueRect = healthValue.rectTransform;
-            float meterLeft = canvasRect.InverseTransformPoint(healthMeter.position).x;
-            float widthOnScreen = canvasRect.rect.xMax - meterLeft;
-            Vector2 position = valueRect.anchoredPosition;
-            position.x = Mathf.Min(Mathf.Max(162f, healthMeter.rect.width - healthValueInset), widthOnScreen - healthValueInset);
-            valueRect.anchoredPosition = position;
         }
 
         private static void SetWidth(RectTransform rect, float width)
