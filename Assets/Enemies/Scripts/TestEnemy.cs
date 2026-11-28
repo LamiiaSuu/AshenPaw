@@ -499,8 +499,9 @@ namespace AshenPaw
                 if (spriteRenderer != null) spriteRenderer.flipX = !dummyMode && facing < 0;
                 visuals.localRotation = Quaternion.Euler(0f, 0f, dummyMode && state == State.Idle ? Mathf.Sin(stateTime * 2f) * 1.2f : 0f);
             }
-            if (healthBar != null) healthBar.gameObject.SetActive(PlayerDebug.ShowEnemyHealth);
-            if (status != null) status.gameObject.SetActive(PlayerDebug.ShowEnemyHealth);
+            bool showHealthDetails = PlayerDebug.ShowEnemyHealth;
+            if (status != null) status.gameObject.SetActive(showHealthDetails);
+            if (enemyName != null) enemyName.gameObject.SetActive(showHealthDetails);
             if (healthBar != null) healthBar.position = transform.position + Vector3.up * (1.65f * Size + 0.4f);
             if (healthFill != null)
             {
