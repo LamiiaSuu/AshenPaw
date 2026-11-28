@@ -136,6 +136,7 @@ MonoBehaviour:
   runningDashBonus: 0.6
   dodgeDuration: 0.3
   dodgeCooldown: 0.4
+  dodgeStaminaCost: 20
   invulnerabilityStart: 0.03
   invulnerabilityEnd: 0.25
   width: 0.75
@@ -163,7 +164,10 @@ MonoBehaviour:
   maxHealth: 100
   hudPrefab: {fileID: 7432286860317580414, guid: eb359b1c4ef467a4193b464130514d3f, type: 3}
   maxStamina: 100
-  staminaRegenPerSecond: 25
+  staminaRegenPerSecond: 55
+  staminaRegenDelay: 0.4
+  exhaustedRegenDelay: 0.6
+  exhaustionRecoveryFraction: 0.2
   stamina: 100
 --- !u!114 &391775347239595171
 MonoBehaviour:
@@ -221,6 +225,14 @@ MonoBehaviour:
   fullyChargedDamage: 28
   fullChargeTime: 1.1
   comboCooldown: 0.12
+  lightStaminaCost: 10
+  heavyStaminaCost: 25
+  dashStrikeStaminaCost: 10
+  snapBiteStaminaCost: 14
+  crossBiteStaminaCost: 8
+  airSpinStaminaCost: 12
+  airHeavyStaminaCost: 18
+  parryStaminaCost: 12
   airBiteRange: 6
   crossBiteDamage: 18
   crossHoldThreshold: 0.18

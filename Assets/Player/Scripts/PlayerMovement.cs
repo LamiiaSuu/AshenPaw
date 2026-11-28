@@ -32,6 +32,7 @@ namespace AshenPaw
         [SerializeField, Min(0f)] private float runningDashBonus = 0.6f;
         [SerializeField] private float dodgeDuration = 0.30f;
         [SerializeField] private float dodgeCooldown = 0.4f;
+        [SerializeField, Min(0f)] private float dodgeStaminaCost = 20f;
         [SerializeField, Min(0f), InspectorName("i-Frames Start (Sekunden)")] private float invulnerabilityStart = 0.03f;
         [SerializeField, Min(0f), InspectorName("i-Frames Ende (Sekunden)")] private float invulnerabilityEnd = 0.25f;
         [Header("Body")]
@@ -63,7 +64,9 @@ namespace AshenPaw
         public int WallSlideFacing => wallDirection;
         public bool IsWallJumping => !IsGrounded && !IsHitStunned && clock < wallLockUntil;
         public int Facing => facing;
-        public bool HasBufferedDodge => dodgeQueued;
+        public float DodgeStaminaCost => dodgeStaminaCost;
+        public bool HasBufferedDodge => dodgeQueued && CanAffordDodge;
+        private bool CanAffordDodge => health == null || health.CanSpendStamina(DodgeStaminaCost);
         private float dodgeBufferUntil = float.NegativeInfinity;
         public bool IsHitStunned => hitStunRemaining > 0f;
         private float hitStunRemaining;
@@ -80,6 +83,7 @@ namespace AshenPaw
         private ContactFilter2D filter;
         private PhysicsScene2D physicsWorld;
         private PlayerCombat combat;
+        private PlayerHealth health;
         private PlayerVisuals visuals;
         private float clock;
         private readonly RaycastHit2D[] hits = new RaycastHit2D[12];
@@ -101,6 +105,7 @@ namespace AshenPaw
             if (GetComponent<PlayerDebug>() == null) gameObject.AddComponent<PlayerDebug>();
             body = GetComponent<Rigidbody2D>();
             combat = GetComponent<PlayerCombat>();
+            health = GetComponent<PlayerHealth>();
             visuals = GetComponent<PlayerVisuals>();
             capsule = GetComponent<CapsuleCollider2D>();
             physicsWorld = gameObject.scene.GetPhysicsScene2D();
@@ -119,6 +124,7 @@ namespace AshenPaw
             body = GetComponent<Rigidbody2D>();
             capsule = GetComponent<CapsuleCollider2D>();
             combat = GetComponent<PlayerCombat>();
+            health = GetComponent<PlayerHealth>();
             physicsWorld = gameObject.scene.GetPhysicsScene2D();
             filter = new ContactFilter2D { useTriggers = false, useLayerMask = true, layerMask = groundLayers };
             IsDodging = IsWallSliding = false;
@@ -170,7 +176,7 @@ namespace AshenPaw
             if (keyboard != null && (keyboard.leftShiftKey.wasPressedThisFrame || keyboard.kKey.wasPressedThisFrame)
                 || pad != null && pad.buttonEast.wasPressedThisFrame)
             {
-                dodgeQueued = true;
+                dodgeQueued = CanAffordDodge;
                 dodgeBufferUntil = clock + 0.16f;
             }
         }
@@ -196,6 +202,7 @@ namespace AshenPaw
             if(!IsGrounded) lastAirVelocityY = body.linearVelocity.y;
             fallSpeed = IsGrounded ? 0f : Mathf.Max(0f, downwardSpeed);
             wallDirection = FindWall(out Vector2 wallPoint);
+            if (dodgeQueued && !CanAffordDodge) dodgeQueued = false;
             if (dodgeQueued && combat != null && !combat.CanDodge) dodgeBufferUntil = clock + 0.16f;
 
             UpdateRunBuildUp(dt);
@@ -256,7 +263,9 @@ namespace AshenPaw
             }
 
             SetHeight(duckHeld && IsGrounded || IsCrouching && !CanStand());
-            if (dodgeQueued && (IsGrounded || !airDodgeUsed) && clock >= dodgeReadyAt && (combat == null || combat.CanDodge))
+            bool dodgeReady = dodgeQueued && (IsGrounded || !airDodgeUsed) && clock >= dodgeReadyAt && (combat == null || combat.CanDodge);
+            if (dodgeReady) dodgeQueued = false;
+            if (dodgeReady && (health == null || health.TrySpendStamina(DodgeStaminaCost)))
             {
                 combat?.CancelAttack();
                 airDodge = !IsGrounded;
@@ -273,7 +282,6 @@ namespace AshenPaw
                 SetHeight(true);
                 if (!HasJump()) jumpQueued = float.NegativeInfinity;
                 body.linearVelocity = new Vector2(dodgeDirection * dodgeSpeed * dodgeSpeedMultiplier * 1.25f, 0f);
-                dodgeQueued = false;
                 Dodged?.Invoke();
                 return;
             }

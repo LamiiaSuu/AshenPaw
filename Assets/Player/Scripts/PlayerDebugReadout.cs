@@ -21,7 +21,8 @@ namespace AshenPaw
         private Object comboTarget;
         private string lastMove = "-", lastAdvantage = "-";
         private float lastStartup, lastActive, lastRecovery;
-        private Rect CombatPanel => new Rect(Screen.width / UiScale - 434f, Screen.height / UiScale - 380f, 418f, 364f);
+        private const float CombatPanelHeight = 456f;
+        private Rect CombatPanel => new Rect(Screen.width / UiScale - 434f, Screen.height / UiScale - CombatPanelHeight - 16f, 418f, CombatPanelHeight);
         private GUISkin debugSkin;
         private GUIStyle numberStyle, captionStyle, outcomeStyle;
         private GUIStyle titleStyle, valueStyle, noteStyle;
@@ -84,6 +85,8 @@ namespace AshenPaw
             GUILayout.Space(6);
             DataRow("Move", lastMove, UiTheme.Ivory);
             DataRow("Phase", combat != null ? combat.DebugAttackPhase : "Ready", UiTheme.Ivory);
+            DataRow("Attack cost", combat != null ? $"{combat.LastAttackStaminaCost:0.#} stamina" : "-", UiTheme.Ivory);
+            DataRow("Combo cost", combat != null ? $"{combat.ComboStaminaCost:0.#} stamina" : "-", UiTheme.Ivory);
             DataRow("Startup", Frames(lastStartup), UiTheme.Ivory);
             DataRow("Active", Frames(lastActive), UiTheme.Ivory);
             DataRow("Recovery", Frames(lastRecovery), UiTheme.Ivory);
@@ -96,6 +99,7 @@ namespace AshenPaw
                 lastComboHit = float.NegativeInfinity; comboTarget = null;
                 lastMove = lastAdvantage = "-";
                 lastStartup = lastActive = lastRecovery = 0f;
+                combat?.ResetStaminaReadout();
                 recentHits.Clear(); popups.Clear();
             }
             GUILayout.EndArea();

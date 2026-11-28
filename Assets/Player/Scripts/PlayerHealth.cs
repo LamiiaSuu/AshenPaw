@@ -11,13 +11,20 @@ namespace AshenPaw
         [SerializeField] private PlayerVitalsHud hudPrefab;
         [Header("Stamina")]
         [SerializeField, Min(1)] private int maxStamina = 100;
-        [SerializeField, Min(0f)] private float staminaRegenPerSecond = 25f;
+        [SerializeField, Min(0f)] private float staminaRegenPerSecond = 55f;
+        [SerializeField, Min(0f)] private float staminaRegenDelay = 0.40f;
+        [SerializeField, Min(0f)] private float exhaustedRegenDelay = 0.60f;
+        [SerializeField, Range(0.01f, 1f)] private float exhaustionRecoveryFraction = 0.20f;
         [SerializeField, Min(0f)] private float stamina = 100f;
 
         public int Health { get; private set; }
         public int MaxHealth => Mathf.Max(1, maxHealth);
         public int MaxStamina => Mathf.Max(1, maxStamina);
         public float Stamina => Mathf.Clamp(stamina, 0f, MaxStamina);
+        public bool IsExhausted { get; private set; }
+        public float StaminaRegenDelayRemaining { get; private set; }
+        public float StaminaRegenPerSecond => staminaRegenPerSecond;
+        private bool HasUnlimitedStamina => TryGetComponent(out PlayerDebug debug) && debug.UnlimitedStamina;
         private PlayerMovement movement;
         private PlayerCombat combat;
         private float protectedUntil, flashUntil;
@@ -59,13 +66,19 @@ namespace AshenPaw
             stamina = Stamina;
         }
 
+        public bool CanSpendStamina(float amount)
+            => amount <= 0f || HasUnlimitedStamina || amount > 0f && HasStaminaToSpend;
+
+        private bool HasStaminaToSpend => !IsExhausted && Stamina > 0f;
+
         public bool TrySpendStamina(float amount)
         {
-            if (amount <= 0f || GetComponent<PlayerDebug>() is PlayerDebug debug && debug.UnlimitedStamina)
-                return true;
-            if (amount > Stamina) return false;
+            if (amount <= 0f || HasUnlimitedStamina) return true;
+            if (!(amount > 0f) || !HasStaminaToSpend) return false;
 
-            stamina = Stamina - amount;
+            stamina = Mathf.Max(0f, Stamina - amount);
+            IsExhausted = stamina <= 0f;
+            StaminaRegenDelayRemaining = IsExhausted ? Mathf.Max(staminaRegenDelay, exhaustedRegenDelay) : staminaRegenDelay;
             return true;
         }
 
@@ -73,6 +86,8 @@ namespace AshenPaw
         {
             Health = MaxHealth;
             stamina = MaxStamina;
+            IsExhausted = false;
+            StaminaRegenDelayRemaining = 0f;
         }
 
         public bool TakeDamage(int damage, Vector2 direction)
@@ -124,8 +139,21 @@ namespace AshenPaw
         private void Update()
         {
             Health = Mathf.Min(Health, MaxHealth);
-            stamina = Mathf.MoveTowards(Stamina, MaxStamina, Time.deltaTime * staminaRegenPerSecond);
+            UpdateStamina(Time.deltaTime);
             if (rumblingPad != null && Time.unscaledTime >= rumbleUntil) StopRumble();
+        }
+
+        private void UpdateStamina(float dt)
+        {
+            if (movement != null && movement.IsDodging) return;
+            if (combat != null && (combat.IsAttacking || combat.IsCharging || combat.IsParrying)) return;
+
+            float regenTime = Mathf.Max(0f, dt - StaminaRegenDelayRemaining);
+            StaminaRegenDelayRemaining = Mathf.Max(0f, StaminaRegenDelayRemaining - dt);
+            stamina = Mathf.MoveTowards(Stamina, MaxStamina, regenTime * staminaRegenPerSecond);
+            float recoveryThreshold = MaxStamina * exhaustionRecoveryFraction;
+            if (IsExhausted && (stamina >= recoveryThreshold || Mathf.Approximately(stamina, recoveryThreshold)))
+                IsExhausted = false;
         }
 
         private void StopRumble()

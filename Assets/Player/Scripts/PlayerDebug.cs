@@ -97,6 +97,7 @@ namespace AshenPaw
             DrawExtra?.Invoke();
             GUILayout.EndScrollView(); GUILayout.EndArea();
         }
+
         private readonly List<LineRenderer> lines = new List<LineRenderer>();
         private Material lineMaterial;
         private int lineCount;

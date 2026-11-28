@@ -20,6 +20,20 @@ namespace AshenPaw
         [SerializeField] private float fullChargeTime = 1.1f;
         [SerializeField, Min(0f), InspectorName("Pause nach Combo (Sekunden)")] private float comboCooldown = 0.12f;
         private float attackCooldownRemaining;
+
+        [Header("Stamina Costs")]
+        [SerializeField, Min(0f)] private float lightStaminaCost = 10f;
+        [SerializeField, Min(0f)] private float heavyStaminaCost = 25f;
+        [SerializeField, Min(0f)] private float dashStrikeStaminaCost = 10f;
+        [SerializeField, Min(0f)] private float snapBiteStaminaCost = 14f;
+        [SerializeField, Min(0f)] private float crossBiteStaminaCost = 8f;
+        [SerializeField, Min(0f)] private float airSpinStaminaCost = 12f;
+        [SerializeField, Min(0f)] private float airHeavyStaminaCost = 18f;
+        [SerializeField, Min(0f)] private float parryStaminaCost = 12f;
+
+        public float LastAttackStaminaCost { get; private set; }
+        public float ComboStaminaCost { get; private set; }
+        private float lastAttackStaminaAt = float.NegativeInfinity;
         
         public event System.Action StrikeCharged;
         public event System.Action HeavyReleased;
@@ -202,6 +216,30 @@ namespace AshenPaw
 
         private void OnDisable() { CancelAttack(); RestorePlatforms(true); }
 
+        private bool SpendAttackStamina(float amount)
+        {
+            TryGetComponent(out PlayerHealth health);
+            float before = health != null ? health.Stamina : 0f;
+            if (health != null && !health.TrySpendStamina(amount)) return false;
+
+            RecordAttackStamina(health != null ? before - health.Stamina : 0f);
+            return true;
+        }
+
+        private void RecordAttackStamina(float paid)
+        {
+            if (Time.time - lastAttackStaminaAt >= 1f) ComboStaminaCost = 0f;
+            LastAttackStaminaCost = paid;
+            ComboStaminaCost += paid;
+            lastAttackStaminaAt = Time.time;
+        }
+
+        internal void ResetStaminaReadout()
+        {
+            LastAttackStaminaCost = ComboStaminaCost = 0f;
+            lastAttackStaminaAt = float.NegativeInfinity;
+        }
+
         private void Update()
         {
             if (PauseMenu.BlocksGameplayInput) return;
@@ -224,7 +262,7 @@ namespace AshenPaw
             if (movement.IsDodging)
             {
                 heavyQueued = false;
-                if (!IsDashAttack)
+                if (!IsDashAttack && SpendAttackStamina(dashStrikeStaminaCost))
                 {
                     StartDashAttack();
                     dashStrikeActive = true;
@@ -267,10 +305,8 @@ namespace AshenPaw
             }
             if (!held && heavyHeld && crossFromDodge && crossBiteQueued && crossHoldTime < crossHoldThreshold)
             {
-                crossBiteQueued = crossFromDodge = false;
                 heavyHeld = heavyQueued = false;
-                movement.ContinueDodgeIntoAttack();
-                StartSnapBite();
+                TryStartSnapBite(fromDodge: true);
                 return;
             }
             if (crossBiteQueued || IsCrossBite)
@@ -286,12 +322,7 @@ namespace AshenPaw
                 queuedLight = 0f;
             }
             if (held && attackCooldownRemaining <= 0f && !heavyHeld && !heavyNeedsRelease && !IsAttacking && !IsCharging && movement.IsGrounded && !movement.IsDodging)
-            {
-                IsCharging = true;
-                StrikeCharged?.Invoke();
-                chargeTime = 0f;
-                AttackFacing = movement.InputFacing();
-            }
+                StartHeavyCharge();
             if (!held && heavyHeld && IsCharging) StartHeavy();
             heavyHeld = held;
         }
@@ -329,23 +360,14 @@ namespace AshenPaw
             if (crossBiteQueued && heavyHeld) crossHoldTime += dt;
             if (movement.IsDodging && crossFromDodge && crossBiteQueued && heavyHeld && crossHoldTime >= crossHoldThreshold)
             {
-                float hopProgress = movement.DodgeProgress;
-                movement.ContinueDodgeIntoAttack();
-                crossFromDodge = false;
-                dashStrikeActive = false;
-                StartCrossBite();
-                crossHopStart = hopProgress;
+                StartCrossBite(fromDodge: true);
                 return;
             }
             if (movement.IsDodging) return;
             if (movement.HasBufferedDodge && CanDodge) { CancelAttack(); return; }
             if (crossFromDodge && crossBiteQueued && (!heavyHeld || crossHoldTime >= crossHoldThreshold))
             {
-                crossFromDodge = false;
-                dashStrikeActive = false;
-                if (heavyHeld) StartCrossBite();
-                else { crossBiteQueued = false; StartSnapBite(); }
-                return;
+                if (heavyHeld ? StartCrossBite() : TryStartSnapBite()) return;
             }
             if (dashStrikeActive)
             {
@@ -357,10 +379,7 @@ namespace AshenPaw
             {
                 heavyQueued = false;
                 heavyNeedsRelease = false;
-                IsCharging = true;
-                StrikeCharged?.Invoke();
-                chargeTime = 0f;
-                AttackFacing = movement.InputFacing();
+                StartHeavyCharge();
             }
 
             if (IsCharging)
@@ -411,13 +430,7 @@ namespace AshenPaw
             elapsed += dt;
             if (!movement.HasBufferedDodge && crossBiteQueued && elapsed >= windup + activeTime && (!heavyHeld || crossHoldTime >= crossHoldThreshold))
             {
-                if (heavyHeld) StartCrossBite();
-                else
-                {
-                    crossBiteQueued = false;
-                    StartSnapBite(fromLightCombo: true);
-                }
-                return;
+                if (heavyHeld ? StartCrossBite() : TryStartSnapBite(fromLightCombo: true)) return;
             }
             if (IsCrossBite && elapsed >= 0.24f) AttackFacing = -crossDirection;
             float strikeSoundTime = windup + (IsStandardAttack && !IsHeavyAttack ? 0.035f : 0f);
@@ -429,8 +442,8 @@ namespace AshenPaw
             if (elapsed >= windup && previous < windup + activeTime) FindHits();
             if (!movement.HasBufferedDodge && !IsHeavyAttack && !IsAirSpin && queuedLight > 0f && ComboStep < 2 && elapsed >= windup + activeTime + 0.1f)
             {
-                StartLight(ComboStep + 1);
-                return;
+                queuedLight = 0f;
+                if (StartLight(ComboStep + 1)) return;
             }
             if (elapsed >= windup + activeTime + recovery)
             {
@@ -448,6 +461,7 @@ namespace AshenPaw
         {
             if (movement == null || !movement.IsGrounded || movement.IsDodging || movement.HasBufferedDodge
                 || movement.IsHitStunned || IsParrying || IsCharging || IsAttacking) return false;
+            if (TryGetComponent(out PlayerHealth health) && !health.TrySpendStamina(parryStaminaCost)) return false;
             AttackFacing = movement.InputFacing();
             parryTime = parryStartup + parryWindow + parryRecovery;
             ParryStarted?.Invoke();
@@ -487,6 +501,7 @@ namespace AshenPaw
 
             const float criticalWindup = 0.86f;
             if (!closest.LockForCritical(this)) return false;
+            RecordAttackStamina(0f);
             body.linearVelocity = new Vector2(0f, body.linearVelocity.y);
             IsHeavyAttack = true;
             ComboStep = 0;
@@ -514,12 +529,12 @@ namespace AshenPaw
                 && !TerrainBlocks(body.position + Vector2.up * 0.75f, delta);
         }
 
-        private void StartLight(int step)
+        private bool StartLight(int step)
         {
             // if (!movement.IsGrounded && ReadAimInput().sqrMagnitude < 0.1f)
             if (!movement.IsGrounded)
             {
-                if (airSpinUsed) return;
+                if (airSpinUsed || !SpendAttackStamina(airSpinStaminaCost)) return false;
                 airSpinUsed = true;
                 IsCharging = IsDashAttack = IsHeavyAttack = false;
                 ComboStep = 0;
@@ -530,8 +545,9 @@ namespace AshenPaw
                 recovery = 0.1f;
                 BeginAttack();
                 IsAirSpin = true;
-                return;
+                return true;
             }
+            if (!SpendAttackStamina(lightStaminaCost)) return false;
             ComboStep = step;
             IsHeavyAttack = false;
             IsDashAttack = false;
@@ -542,10 +558,26 @@ namespace AshenPaw
             activeTime = 0.1f;
             recovery = step == 2 ? 0.12f : 0.1f;
             BeginAttack();
+            return true;
+        }
+
+        private void StartHeavyCharge()
+        {
+            if (!SpendAttackStamina(heavyStaminaCost))
+            {
+                heavyNeedsRelease = true;
+                return;
+            }
+
+            IsCharging = true;
+            StrikeCharged?.Invoke();
+            chargeTime = 0f;
+            AttackFacing = movement.InputFacing();
         }
 
         private void StartHeavy()
         {
+            lastAttackStaminaAt = Time.time;
             IsDashAttack = false;
             float amount = ChargeAmount;
             releasedCharge = amount;
@@ -576,6 +608,7 @@ namespace AshenPaw
 
         private void StartAirBite()
         {
+            if (!SpendAttackStamina(airHeavyStaminaCost)) return;
             airActionUsed = true;
             if (movement.DownHeld)
             {
@@ -682,6 +715,16 @@ namespace AshenPaw
             }
         }
 
+        private bool TryStartSnapBite(bool fromLightCombo = false, bool fromDodge = false)
+        {
+            crossBiteQueued = crossFromDodge = false;
+            if (!SpendAttackStamina(snapBiteStaminaCost)) return false;
+
+            if (fromDodge) movement.ContinueDodgeIntoAttack();
+            StartSnapBite(fromLightCombo);
+            return true;
+        }
+
         private void StartSnapBite(bool fromLightCombo = false)
         {
             crossBiteQueued = crossFromDodge = dashStrikeActive = false;
@@ -715,10 +758,14 @@ namespace AshenPaw
             return (2f * t3 - 3f * t2 + 1f) * crossStartX + (t3 - 2f * t2 + t) * tangent
                 + (-2f * t3 + 3f * t2) * crossDestinationX + (t3 - t2) * crossDirection * 3f * 0.24f;
         }
-        private void StartCrossBite()
+        private bool StartCrossBite(bool fromDodge = false)
         {
-            crossHopStart = 0f;
-            crossBiteQueued = false;
+            crossBiteQueued = crossFromDodge = false;
+            if (!SpendAttackStamina(crossBiteStaminaCost)) return false;
+
+            crossHopStart = fromDodge ? movement.DodgeProgress : 0f;
+            if (fromDodge) movement.ContinueDodgeIntoAttack();
+            dashStrikeActive = false;
             crossBiteConnected = false;
             heavyQueued = false;
             IsCharging = IsDashAttack = false;
@@ -741,6 +788,7 @@ namespace AshenPaw
                 float edge = crossDirection > 0 ? crossTarget.bounds.max.x : crossTarget.bounds.min.x;
                 crossDestinationX = edge + crossDirection * 0.65f;
             }
+            return true;
         }
 
         private Collider2D SelectCrossTarget()
@@ -786,6 +834,7 @@ namespace AshenPaw
         public float LimitDodgeSpeed(float speed, int direction)
         {
             if (!crossBiteQueued || !crossFromDodge || !heavyHeld || crossTarget == null) return speed;
+            if (TryGetComponent(out PlayerHealth health) && !health.CanSpendStamina(crossBiteStaminaCost)) return speed;
             float edge = direction > 0 ? crossTarget.bounds.max.x : crossTarget.bounds.min.x;
             float remaining = Mathf.Max(0f, (edge + direction * 0.65f - body.position.x) * direction);
             return Mathf.Min(speed, Mathf.Sqrt(2f * 90f * remaining), remaining / Time.fixedDeltaTime);
